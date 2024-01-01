@@ -6,6 +6,9 @@ public class App {
   }
 
   public static void main(String[] args) {
+    new BasicProducer();
+    new BasicConsumer();
+
     System.out.println(new App().getGreeting());
   }
 }

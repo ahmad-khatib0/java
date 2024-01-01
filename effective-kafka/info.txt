@@ -103,6 +103,35 @@ The asynchronous behaviour of topic deletion should be taken into account when d
 3. Use unique, disposable topic names for each test, deleting any ephemeral topics when the test ends.
 
 
+ ▲                                                                                                     ▲
+ █ Interfacing with the Kafka client libraries is done primarily using the following classes:          █
+ █ • Producer: The public interface of the producer client, containing the necessary method signatures █
+ █ for publishing records and using transactions. This interface is surprisingly light on              █
+ █ documentation; method comments simply delegate the documentation to the concrete implementation.    █
+ █                                                                                                     █
+ █ • KafkaProducer: The implementation of Producer. In addition, a KafkaProducer                       █
+ █ contains detailed Javadoc comments for each method.                                                 █
+ █                                                                                                     █
+ █ • ProducerRecord: A data structure encompassing the attributes of a record, as perceived by a       █
+ █ producer. To be precise, this is the representation of a record before it has been published to     █
+ █ a partition; as such, it contains only the basic set of attributes: topic name, partition number,   █
+ █ optional headers, key, value, and a timestamp.                                                      █
+ █                                                                                                     █
+ █ • Consumer: The definition of a consumer entity, containing message signatures for controlling      █
+ █ subscriptions and topic/partition assignment, fetching records from the cluster, committing         █
+ █ offsets, and obtaining information about the available topics and partitions.                       █
+ █                                                                                                     █
+ █ • KafkaConsumer: The implementation of Consumer. Like its producer counterpart, this implemen-      █
+ █ tation contains the complete set of Javadocs.                                                       █
+ █                                                                                                     █
+ █ • ConsumerRecord: A consumer-centric structure for housing record attributes. A ConsumerRecord      █
+ █ is effectively a superset of the ProducerRecord, containing additional metadata such as the         █
+ █ record offset, the checksum, and some other internal attributes.                                    █
+ █                                                                                                     █
+ ▼                                                                                                     ▼
+
+
+
 
 
 
