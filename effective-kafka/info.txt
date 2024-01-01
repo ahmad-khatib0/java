@@ -1,0 +1,108 @@
+When the first consumer in a group subscribes to the topic, it will receive all partitions in that topic. 
+  When a second consumer subsequently joins, it will get approximately half of the partitions, relieving
+  the first consumer of half of its prior load. The process runs in reverse when consumers leave (by
+  disconnecting or timing out) — the remaining consumers will absorb a greater number of partitions.
+
+Consumers are ‘cheap’, so to speak — you can have a fair number of them tail the logs without 
+  stressing the cluster. This is a yet another point of distinction between an event stream and 
+  a traditional message queue, and it’s a crucial one.
+
+When a consumer first subscribes to a topic, whereby no offsets have
+  been registered for the encompassing consumer group, it may elect to start at either the head-end
+  or the tail-end of the topic. Thereafter, the consumer will acquire an offset vector and will advance
+  the offsets internally, in line with the consumption of records
+
+In Kafka terminology, the ‘head’ of a partition corresponds to the location of the end offsets, while 
+  the ‘tail’ of the partition is the side closest to the beginning offsets. This might sound confusing 
+  if Kafka is perceived as a queue of sorts, where the head-end of a queue canonically corresponds to 
+  the side which has the oldest elements. In Kafka, the oldest elements are at the tail-end.
+
+Since consumers across different consumer groups do not interfere, there may be any number
+  of them reading concurrently from the same topic. Consumers run at their own pace; a slow or
+  backlogged consumer HAS NO impact on its peers.
+
+Persisting the consumer state back to the Kafka cluster is called committing an offset. Typically, a
+  consumer will read a record (or a batch of records) and commit the offset of the last record plus
+  one. If a new consumer takes over the topic, it will commence processing from the last committed offset 
+  — hence the plus-one step is essential. (Otherwise, the last processed record would be handled a second time.)
+
+Curious fact: Kafka employs a recursive approach to managing committed offsets, elegantly
+  utilising itself to persist and track offsets. When an offset is committed, the group coordinator
+  will publish a binary record on the internal __consumer_offsets topic. The contents of this
+  topic are compacted in the background, creating an efficient event store that progressively
+  reduces to only the last known commit points for any given consumer group.
+
+Free consumers
+  The association of a consumer with a consumer group is an optional one, indicated by the presence
+  of a group.id consumer property. If unset, a free consumer is presumed. Free consumers do not
+  subscribe to a topic; instead, the consuming application is responsible for manually assigning a set of
+  topic-partitions to itself, individually specifying the starting offset for each topic-partition pair. Free
+  consumers do not commit their offsets to Kafka; it is up to the application to track the progress of such
+  consumers and persist their state as appropriate, using a datastore of their choosing. The concepts
+  of automatic partition assignment, rebalancing, offset persistence, partition exclusivity, consumer
+  heartbeating and failure detection (safety and liveness, in other words), and other so-called ‘niceties’
+  accorded to consumer groups cease to exist in this mode.
+
+
+Summary of core concepts:
+
+• A cluster hosts multiple topics, each having an assigned leader and zero or more follower replicas.
+
+• Topics are subdivided into partitions, with each partition forming an independent, 
+  totally-ordered sequence within a wider, partially-ordered stream.
+  
+• Multiple producers are able to publish to a topic, picking a partition at will. The partition
+  may be selected directly — by specifying a partition number, or indirectly — by way of a record
+  key, which deterministically hashes to a partition number.
+  
+• Partitions in a topic can be load-balanced across a population of consumers in a consumer
+  group, allocating partitions approximately evenly among the members of that group.
+  
+• A consumer in a group is not guaranteed a partition assignment. Where the group’s
+  population outnumbers the partitions, some consumers will remain idle until this balance
+  equalises or tips in favour of the other side.
+
+• A consumer will commit the offset of a record when it is done processing it. The commits
+  are directed to a consumer coordinator, which will end up written to an internal __consumer_-
+  offsets topic. The offset of the record is incremented by one before committing, to prevent unnecessary replay.
+  
+• Partitions may be manually assigned to free consumers. If necessary, an entire topic may
+  be assigned to a single free consumer — this is done by individually assigning all partitions.
+  
+
+ZooKeeper
+  acts as an arbiter — electing a sole controller among the available Kafka broker nodes.
+  Internally, ZooKeeper employs an atomic broadcast protocol to agree on and subsequently
+  maintain a consistent view of the cluster state throughout the ZooKeepr ensemble. This
+  protocol operates on the concept of a majority vote, also known as quorum, which in turn,
+  requires an odd number of participating ZooKeeper nodes. When running in a production
+  environment, ensure that at least three nodes are deployed in a manner that no pair of nodes
+  may be impacted by the same contingency. Ideally, ZooKeeper nodes should be deployed in
+  geographically separate data centres.
+
+
+The Kafka broker configuration is
+  defined in $KAFKA_HOME/config/server.properties, but the file is relatively small and initially
+  contains mostly commented-out entries. This means that most settings are assigned their default
+  values. Rather than consulting the official documentation to determine what the defaults might
+  be and whether or not they are actually overridden in your configuration, you need only look at
+  the broker logs. This is particularly useful when you need to debug the configuration. Suppose a
+  particular configuration value isn’t being applied correctly — perhaps due to a simple typo, or maybe
+  because there are two entries for the same configuration key. The configuration printout in Kafka’s
+  logs provides its vantage point — as seen from the eyes of the broker.
+
+
+The asynchronous behaviour of topic deletion should be taken into account when dealing with short-
+  lived topics — for example, when conducting an integration test. The latter typically requires a state
+  reset between successive runs, wiping associated database tables and event streams. Because there
+  is no equivalent of a blocking DELETE TABLE DDL operation in Kafka, one must think outside the
+  box. The options are:
+1. Forcibly reset consumer offsets to the high-water mark prior to each test, delete the 
+   offsets, or delete the consumer group (all three will achieve equivalent results);
+2. Truncate the underlying partitions by shifting the low-water mark 
+3. Use unique, disposable topic names for each test, deleting any ephemeral topics when the test ends.
+
+
+
+
+
