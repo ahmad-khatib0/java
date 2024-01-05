@@ -130,6 +130,15 @@ The asynchronous behaviour of topic deletion should be taken into account when d
  █                                                                                                     █
  ▼                                                                                                     ▼
 
+One of the major contributors to Apache Kafka — recommends limiting the number of partitions per broker 
+  to 100 × b × r, where b is the number of brokers in a Kafka cluster and r is the replication factor.
+
+If a record has no additive effects, the consumer is inherently idempotent.
+  (For example, if the consumer simply overwrites an existing database entry with a new one, then the
+  update is naturally idempotent.) Otherwise, the consumer must check whether a record has already
+  been processed, and to what extent, prior to processing the record. The combination of at-least-once
+  delivery and consumer idempotence collectively leads to exactly-once semantics.
+
 
 
 
