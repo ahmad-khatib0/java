@@ -141,6 +141,28 @@ If a record has no additive effects, the consumer is inherently idempotent.
 
 
 
+Pipelining: 
+1. Invoke KafkaConsumer.poll(), potentially sending fetch queries to the cluster. If there are
+   pending queries for which responses have not yet been received, no further queries are issued.
+2. Wait for the outcome of a pending fetch, checking the status of the fetch buffer. 
+   The accumulation of the fetch results will be performed by a background I/O thread. 
+   This operation will block until the data becomes available or the poll timeout expires.
+3. Decompress the batch if compression was set on the producer.
+4. Deserialize each record in the batch.
+5. Prior to returning from poll(), initiate a prefetch. This action is non-blocking; it fires off a set
+   of queries to the brokers and returns immediately, without waiting for responses. The control is
+   transferred back to the application code. When the prefetch responses eventually arrive, these
+   will be decompressed and deserialized, with the resulting records placed into a fetch buffer.
+6. The application then applies the requisite business logic to each record by invoking the regis-
+   tered EventListener callbacks. In most applications, this would involve updating a database
+   and possibly other I/O. More often than not, the cost of processing a record is significantly
+   greater than the cost of reading it off a Kafka topic.
+7. After the application has completed processing the batch, it can safely commit the consumer’s
+   offsets by invoking Consumer.commitAsync(). This will have the effect of committing the
+   offsets for all records returned during the last poll(). Being an asynchronous operation, the
+   committing of offsets will occur in a background I/O thread.
+
+
 
 
 

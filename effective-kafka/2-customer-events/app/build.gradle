@@ -33,6 +33,13 @@ dependencies {
 
     implementation group: 'org.slf4j', name: 'slf4j-nop', version: '2.0.3'
     implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '3.3.1'
+    // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.16.1'
+    // https://mvnrepository.com/artifact/com.fasterxml.jackson.dataformat/jackson-dataformat-yaml
+    implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.16.1'
+    // https://mvnrepository.com/artifact/com.obsidiandynamics.fulcrum/fulcrum-worker
+    implementation group: 'com.obsidiandynamics.fulcrum', name: 'fulcrum-worker', version: '0.39.0'
+
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
