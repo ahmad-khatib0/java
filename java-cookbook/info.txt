@@ -1,9 +1,0 @@
-CLASSPATH is a list of class files in any of a number of directories, JAR files, or ZIP files. Just 
-  like the PATH your system uses for finding programs, the CLASSPATH is used by the Java runtime to 
-  find classes. Even when you type something as simple as java HelloWorld, the Java interpreter 
-  looks in each of the places named in your CLASSPATH until it finds a match.
-
-
-
-
-

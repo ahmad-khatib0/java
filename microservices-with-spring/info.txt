@@ -1,0 +1,18 @@
+
+Reactive microservices
+  Traditionally, as Java developers, we are used to implementing synchronous communication using blocking 
+  I/O, for example, a RESTful JSON API over HTTP. Using a blocking I/O means that a thread is allocated 
+  from the operating system for the length of the request. If the number of concurrent requests goes up, a 
+  server might run out of available threads in the operating system, causing problems ranging from longer 
+  response times to crashing servers. Using a microservice architecture typically makes this problem even worse, 
+  where typically a chain of cooperating microservices is used to serve a request. The more microservices involved 
+  in serving a request, the faster the available threads will be drained.
+Solution
+  Use non-blocking I/O to ensure that no threads are allocated while waiting for processing 
+  to occur in another service, that is, a database or another microservice.
+
+A fat JAR file contains not only the classes and resource files of the application itself but also all the JAR 
+  files the application depends on. This means that the fat JAR file is the only JAR file required to run the 
+  application; that is, we only need to transfer one JAR file to an environment where we want to run the application 
+  instead of transferring the application’s JAR file along with all the JAR files the application depends on.
+
