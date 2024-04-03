@@ -1,0 +1,116 @@
+Java is both a compiled and an interpreted language. Java source code is turned into simple binary instructions, 
+  much like ordinary microprocessor machine code. However, whereas C or C++ source is reduced to native instructions 
+  for a particular model of processor, Java source is compiled into a universal format—instructions for
+  the virtual machine known as bytecode.
+
+Java bytecode is executed by a Java runtime interpreter. The runtime system performs all the normal activities 
+  of a hardware processor, but it does so in a safe, virtual environment. It executes a stack-based instruction 
+  set and manages memory like an operating system. It creates and manipulates primitive data types and loads and 
+  invokes newly referenced blocks of code. Most importantly, it does all this in accordance with a strictly defined 
+  open specification that can be implemented by anyone who wants to produce a Java-compliant virtual machine
+  Together, the virtual machine and language definition provide a complete specification. There are no features 
+  of the base Java language left undefined or implementation dependent. For example, Java specifies the sizes and 
+  mathematical properties of all its primitive data types rather than leaving it up to the platform implementation
+  
+In addition to the platform-specific runtime system, Java has a number of fundamental classes that contain 
+  architecture-dependent methods. These native methods serve as the gateway between the Java virtual machine 
+  and the real world. They are implemented in a natively compiled language on the host platform and provide 
+  low-level access to resources such as the network, the windowing system, and the host filesystem. The vast 
+  majority of Java, however, is written in Java itself—bootstrapped from these basic parts—and is therefore 
+  portable. This includes important Java tools such as the Java compiler also written in Java and therefore 
+  available on all Java platforms in exactly the same way without porting.  
+
+Historically, interpreters have been considered slow, but Java is not a traditional interpreted language. In 
+  addition to compiling source code down to portable bytecode, Java has also been carefully designed so that 
+  software implementations of the runtime system can further optimize their performance by compiling bytecode 
+  to native machine code on the fly. This is called dynamic or just-in-time (JIT) compilation. With JIT 
+  compilation, Java code can execute as fast as native code and maintain its transportability and security.
+
+The problem with a traditional JIT compilation is that optimizing code takes time. While a JIT compiler can 
+  produce decent results, it may suffer significant latency when the application starts up. This is generally 
+  not a problem for long-running server-side applications, but it is a serious problem for client-side software 
+  and applications that run on smaller devices with limited capabilities. To address this, Java’s compiler 
+  technology, called HotSpot, uses a trick called adaptive compilation. If you look at what programs actually 
+  spend their time doing, it turns out that they spend almost all their time executing a relatively small part 
+  of the code again and again. The chunk of code that is executed repeatedly may be only a small fraction of the 
+  total program, but its behavior determines the program’s overall performance. Adaptive compilation allows the 
+  Java runtime to take advantage of new kinds of optimizations that simply can’t be done in a statically compiled 
+  language, hence the claim that Java code can run faster than C/C++ in some cases.
+
+HotSpot starts out as a normal Java bytecode interpreter, but with a difference: it measures (profiles) the 
+  code as it is executing to see what parts are being executed repeatedly. Once it knows which parts of the 
+  code are crucial to performance, HotSpot compiles those sections into optimal native machine code. Since it 
+  compiles only a small portion of the program into machine code, it can afford to take the time necessary to 
+  optimize those portions. The rest of the program may not need to be compiled at all—just interpreted—saving 
+  memory and time. In fact, the Java VM can run in one of two modes: client and server, which determine whether 
+  it emphasizes quick startup time and memory conservation or flat-out performance. As of Java 9, you can also 
+  put ahead-of-time (AOT) compilation to use if minimizing your application startup time is really important.
+
+Java doesn’t allow programmer-defined operator overloading (which, in some languages, allows programmers to 
+  redefine the meanings of basic symbols like + and –). Java doesn’t have a source code preprocessor, so it 
+  doesn’t have things like macros, #define statements, or conditional source compilation. These constructs 
+  exist in other languages primarily to support platform dependencies, so in that sense, they should not be
+  needed in Java. Conditional compilation is also commonly used for debugging, but Java’s sophisticated runtime 
+  optimizations and features such as assertions solve the problem more elegantly
+
+Another attribute of a language is the way it binds method calls to their definitions. In a static language 
+  such as C or C++, the definitions of methods are normally bound at compile time, unless the programmer 
+  specifies otherwise. Languages like Smalltalk, on the other hand, are called late binding because they locate 
+  the definitions of methods dynamically at runtime. Early binding is important for performance reasons; it
+  lets an application run without the overhead incurred by searching for methods at runtime. But late binding 
+  is more flexible. It’s also necessary in an object-oriented language where new types can be loaded dynamically 
+  and only the runtime system can determine which method to run.
+
+Java is fully runtime-typed as well. The Java runtime system keeps track of all objects and makes it possible 
+  to determine their types and relationships during execution. This means you can inspect an object at runtime 
+  to determine what it is. Unlike C or C++, the Java runtime system checks casts from one type of object to 
+  another, and it’s possible to use new kinds of dynamically loaded objects with a degree of type safety. And 
+  because Java uses late binding, it’s possible to write code that replaces some method definitions at runtime.
+
+Incremental Development
+  Java carries all data type and method signature information with it from its source code to its compiled 
+  bytecode form. This means that Java classes can be developed incrementally. Your own Java source code can also 
+  be compiled safely with classes from other sources your compiler has never seen. In other words, you can write 
+  new code that references binary class files without losing the type safety you gain from having the source code.
+
+Java does not suffer from the “fragile base class” problem. In languages such as C++, the implementation of a 
+  base class can be effectively frozen because it has many derived classes; changing the base class may require 
+  recompiling all of the derived classes. This is an especially difficult problem for developers of class libraries. 
+  Java avoids this problem by dynamically locating fields within classes. As long as a class maintains a valid 
+  form of its original structure, it can evolve without breaking other classes that are derived from it or use.
+
+In addition to maintaining objects in memory, the Java runtime system keeps track of all references to those 
+  objects. When an object is no longer in use, Java automatically removes it from memory. You can, for the most 
+  part, simply ignore objects you no longer use, with confidence that the interpreter will clean them up at
+  an appropriate time.
+
+We’ve said that Java doesn’t have pointers. Strictly speaking, this statement is true, but it’s also misleading. 
+  What Java provides are references—a safer kind of pointer. A reference is a strongly typed handle for an object. 
+  All objects in Java, with the exception of primitive numeric types, are accessed through references. You can use
+  references to build all the normal kinds of data structures a C programmer would be accustomed to building with 
+  pointers, such as linked lists, trees, and so forth. The only difference is that with references, you have 
+  to do so in a type-safe way.
+
+The Verifier
+  Java’s first line of defense is the bytecode verifier. The verifier reads bytecode before it is run and makes 
+  sure it is well-behaved and obeys the basic rules of the Java bytecode specification. A trusted Java compiler 
+  won’t produce code that does otherwise. However, it’s possible for a mischievous person to deliberately 
+  assemble bad Java bytecode. It’s the verifier’s job to detect this.
+    
+Class Loaders
+  Java adds a second layer of security with a class loader. A class loader is responsible for bringing the 
+  bytecode for Java classes into the interpreter. Every application that loads classes from the network must use 
+  a class loader to handle this task. After a class has been loaded and passed through the verifier, it remains
+  associated with its class loader. As a result, classes are effectively partitioned into separate namespaces 
+  based on their origin. When a loaded class references another class name, the location of the new class is 
+  provided by the original class loader. This means that classes retrieved from a specific source can be 
+  restricted to interact only with other classes retrieved from that same location. For example, a Java-enabled 
+  web browser can use a class loader to build a separate space for all the classes loaded from a given URL. 
+  Sophisticated security based on cryptographically signed classes can also be implemented using class loaders.    
+
+The java. and javax. package hierarchies are special. Any package that begins with java. is part of the core 
+  Java API and is available on any platform that supports Java. The javax. package normally denotes a standard 
+  extension to the core platform, which may or may not be installed. However, in recent years, many standard 
+  extensions have been added to the core Java API without renaming them. The javax.swing package is an example; 
+  it is part of the core API in spite of its name.
+
