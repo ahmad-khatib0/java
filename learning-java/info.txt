@@ -114,3 +114,54 @@ The java. and javax. package hierarchies are special. Any package that begins wi
   extensions have been added to the core Java API without renaming them. The javax.swing package is an example; 
   it is part of the core API in spite of its name.
 
+When we write Java source code, it is the Java compiler—javac—that turns our source into usable bytecode. When we want 
+  to test that bytecode, it is the Java command itself—java—that we use to execute our programs. When we have all of 
+  our classes compiled and working together, it is the Java archive tool—jar—that allows us to bundle up those classes 
+  for distribution
+
+The Classpath: 
+  An element of the classpath can be a directory or a JAR file. JARs are simple archives that include extra files 
+  (metadata) that describe each archive’s contents. JAR files are created with the JDK’s jar utility. Many tools for 
+  creating ZIP archives are publicly available and can be used to inspect or create JAR files as well.1 The archive format
+  enables large groups of classes and their resources to be distributed in a single, compact file; the Java runtime 
+  automatically extracts individual class files from the archive, as needed.
+
+By default, however, javac checks only source files that are referenced directly from other source files. This means 
+  that if you have an out-of-date class file that is referenced only by an up-to-date class file, it may not be 
+  noticed and recompiled. For that and many other reasons, most projects use a real build utility such as Gradle 
+  to manage builds, packaging, and more.
+
+Java allows some graphical changes to build up before realizing them on your screen. This can 
+  be an immensely efficient trick, but it can sometimes catch you off guard
+
+The Java runtime system can load class files directly from an archive in your CLASSPATH environment variable, Nonclass 
+  files (data, images, etc.) contained in your JAR file can also be retrieved from the classpath by your application using 
+  the getResource() method. Using this feature, your code doesn’t have to know whether any resource is in a plain file or 
+  a member of a JAR archive. Whether a given class or data file is an item in a JAR file or an individual file on the 
+  classpath, you can always refer to it in a standard way and let Java’s class loader resolve the location.
+  Items stored in JAR files are compressed with the standard ZIP file compression.
+
+
+JAR manifests
+  Note that the jar command automatically adds a directory called META-INF to our archive. The META-INF directory holds 
+  files describing the contents of the JAR file. It always contains at least one file: MANIFEST.MF. The MANIFEST.MF file
+  usually contains a “packing list” naming important files in the archive, along with a user-definable set of attributes 
+  for each entry. The manifest is a text file containing a set of lines in the form keyword: value. The manifest is, 
+  by default, mostly empty and contains only JAR file version information
+
+You can add your own information to the manifest descriptions: 
+  For example, we can create a file with the following keyword: value lines:
+      Name: spaceblaster/images/planetoid.gif
+      RevisionNumber: 42.7
+      Artist-Temperament: moody
+
+# jar -cvmf myManifest.mf spaceblaster.jar spaceblaster
+  Notice we included an additional option in the compact list of flags, m, which specifies that jar should read 
+  additional manifest information from the file given on the command line. How does jar know which file is which? Because 
+  m is before f, it expects to find the manifest file name information before the name of the JAR file it will create. 
+
+Main-Class: spaceblaster.game.Game
+   If you add this to your JAR file manifest (using the m option described earlier), you can run the application 
+   directly from the JAR:         java -jar spaceblaster.jar
+   
+

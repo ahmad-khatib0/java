@@ -1,0 +1,82 @@
+
+
+# run the BigBird app (first run ch examples)
+$ java animals.birds.BigBird 
+
+
+# use the java command to launch an “executable” Java ARchive (JAR) file, In this case, the JAR file includes metadata 
+  with the name of the startup class containing the main() method, and the classpath becomes the JAR file itself. 
+$ java -jar spaceblaster.jar
+
+
+# passing args to java app : 
+$ java -Dstreet=sesame -Dscene=alley animals.birds.BigBird
+
+ +-----------------------------------------------------------------------------------------------------------------------+
+ |                                                                                                                       |
+ |                                                                                                                       |
+ |   # On a Unix system (including macOS), you set the CLASSPATH environment variable                                    |
+ |     with a colon-separated list of directories and class archive files:                                               |
+ |   $ export CLASSPATH=/home/user/Java/classes:/home/josh/lib/foo.jar:.                                                 |
+ |                                                                                                                       |
+ |   # This example specifies a classpath with three locations: a directory in the user’s home, a JAR file in            |
+ |     another user’s directory, and the current directory, which is always specified with a dot (.). The last           |
+ |     component of the classpath, the current directory, is useful when you are tinkering with classes.                 |
+ |                                                                                                                       |
+ |                                                                                                                       |
+ |   # The CLASSPATH environment variable may also include “*” wildcards that match all JAR files within a               |
+ |     directory. For example:                                                                                           |
+ |   $ export CLASSPATH=/home/sarah/libs/*                                                                               |
+ |                                                                                                                       |
+ |                                                                                                                       |
+ | #  For example, consider a search for the class animals.birds.BigBird Searching the classpath directory               |
+ | /usr/lib/java                      means that the interpreter looks for an individual class file at                   |
+ | /usr/lib/java/animals/birds/BigBird.class. Searching a ZIP or JAR archive on the classpath, say                       |
+ | /home/sarah/zoo.jar,               means that the interpreter looks for the file                                      |
+ | animals/birds/BigBird.class        within that archive.                                                               |
+ |                                                                                                                       |
+ | # For the Java runtime, java, and the Java compiler, javac, the classpath can also be                                 |
+ | specified with the -classpath option. On a Linux or macOS machine, for example:                                       |
+ | $ javac -classpath /home/pat/classes:/utils/utils.jar:. Foo.java                                                      |
+ |                                                                                                                       |
+ | # If you don’t specify the CLASSPATH environment variable or command-line option, the classpath defaults to           |
+ | the current directory (.); this means that the files in your current directory are normally available. If             |
+ | you change the classpath and don’t include the current directory, these files will no longer be accessible.           |
+ |                                                                                                                       |
+ +-----------------------------------------------------------------------------------------------------------------------+
+
+
+# create the Bluebird.class file at different location (the compiled version )
+$ javac -d /home/user/Java/classes Bluebird.java
+
+ +-----------------------------------------------------------------------------------------------+
+ |                                                                                               |
+ | $ jar -cvf jarFile path [ path ] [ ... ]                                                      |
+ | # Create jarFile containing path(s).                                                          |
+ |                                                                                               |
+ | $ jar -tvf jarFile [ path ] [ ... ]                                                           |
+ | # List the contents of jarFile, optionally showing just path(s).                              |
+ |                                                                                               |
+ | $ jar -xvf jarFile [ path ] [ ... ]                                                           |
+ | # Extract the contents of jarFile, optionally extracting just path(s).                        |
+ |                                                                                               |
+ | # In these commands, the flag letters c, t, and x tell jar whether it is creating an archive, |
+ | listing an archive’s contents, or extracting files from an archive. The f flag means that     |
+ | the next argument is the name of the JAR file on which to operate.                            |
+ |                                                                                               |
+ |                                                                                               |
+ +-----------------------------------------------------------------------------------------------+
+
+# jar example:  
+$ jar -cvf spaceblaster.jar spaceblaster/           #  pack 
+$ jar -xvf spaceblaster.jar                         # unpack
+$ jar -tvf spaceblaster.jar                         # list
+
+# We can also extract an individual file or directory by supplying one more command-line argument:
+$ jar -xvf spaceblaster.jar spaceblaster/docs/help2.html 
+
+
+# add this information (the myManifest.mf file) to the manifest in our archive (-m for specifing the manifest file)
+$ jar -cvmf myManifest.mf spaceblaster.jar spaceblaster
+
+
