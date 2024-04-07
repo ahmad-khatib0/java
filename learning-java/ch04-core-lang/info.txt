@@ -1,0 +1,128 @@
+The latest version of Java bases its character and string data on the Unicode 14.0 standard, which uses at least 
+  two bytes to represent each symbol internally
+
+The Java char type and String class natively support Unicode values. Internally, the text is stored using either character 
+  or byte arrays; however, the Java language and APIs make this transparent to you, and you generally will not have to think
+  about it. Unicode is also very ASCII friendly (ASCII is the most common character encoding for English). The first 256 
+  characters are defined to be identical to the first 256 characters in the ISO 8859-1 (Latin-1) character set, so Unicode 
+  is effectively backward compatible with the most common English character sets. Furthermore, one of the most common file 
+  encodings for Unicode, called UTF-8, preserves ASCII values in their single byte form. This encoding is used by default 
+  in compiled Java class files, so storage remains compact for English text.
+
+Java programs can be written with special Unicode escape sequences. A Unicode character can be represented with this 
+  escape sequence: \uxxxx
+  xxxx is a sequence of one to four hexadecimal digits. The escape sequence indicates an ASCII-encoded Unicode character. 
+  This is also the form Java uses to output (print) Unicode characters in an environment that doesn’t otherwise support 
+  them. Java comes with classes to read and write Unicode character streams in specific encodings, including UTF-8.
+
+As with many long-lived standards in the tech world, Unicode was originally designed with so much extra space that 
+  no conceivable character encoding could ever possibly require more than 64K characters. Sigh. Naturally we have 
+  sailed past that limit and some UTF-32 encodings are in popular circulation. Most notably, emoji characters 
+  scattered throughout messaging apps are encoded beyond the stan‐ dard range of Unicode characters. (For example, 
+  the canonical smiley emoji has the Unicode value 1F600.) Java supports multibyte UTF-16 escape sequences for such
+  characters. Not every platform that supports Java will support emoji output, 
+
+Unlike traditional C or C++, Java also maintains runtime information about objects and uses this to allow 
+  truly dynamic behavior. Java code may load new types at runtime and use them in fully object-oriented ways, 
+  allowing casting (converting between types) and full polymorphism (combining features from multiple types). 
+  Java code may also “reflect” upon or examine its own types at runtime, allowing advanced kinds of application 
+  behavior, such as interpreters that can interact with compiled programs dynamically.
+
+Java uses a technique called “two’s complement” to store integers. This technique uses one bit at the 
+  beginning of the number to determine whether it is a positive or negative value. A quirk of this technique 
+  is that the negative range is always larger by one.
+  
+Floating-point operations in Java follow the IEEE 754 international specification, which means that the result 
+  of floating-point calculations is normally the same on different Java platforms. However, Java allows for 
+  extended precision on platforms that support it. This can introduce extremely small-valued and arcane 
+  differences in the results of high-precision operations. Most applications would never notice this, but if you 
+  want to ensure that your application produces exactly the same results on different platforms, you can use 
+  the special keyword strictfp as a class modifier on the class containing the floating-point manipulation
+
+Integer literals
+  Integer literals can be specified in binary (base 2), octal (base 8), decimal (base 10), or hexadecimal 
+  (base 16). Binary, octal, and hexadecimal bases are mostly used when dealing with low-level file or network 
+  data. They represent useful groupings of individual bits: 1, 3, and 4 bits, respectively. Decimal values have 
+  no such mapping, but they are much more human friendly for most numeric information.
+  
+ ╒════════════════════════════════════════════════════════════════════════════════════════════════════════╕
+
+  -- integer is specified by a sequence of digits beginning with one of the characters 1–9:              
+     int i = 1230;                                                                                          
+  -- A binary number is denoted by the leading characters 0b or 0B (zero “b”), followed by a combination 
+     of zeros and ones:        int i = 0b01001011;       // i = 75 decimal                                  
+  -- Octal numbers are distinguished from decimal numbers by a simple leading zero:                      
+     int i = 01230;           // i = 664 decimal                                                            
+  -- A hexadecimal number is denoted by the leading characters 0x or 0X (zero “x”), followed by a        
+     combination of digits and the characters a–f or A–F, which represent the decimal values 10–15:         
+     int i = 0xFFFF;          // i = 65535 decimal                                                          
+  -- Integer literals are of type int unless they are suffixed with an L, denoting that they             
+     are to be produced as a long value:                                                                    
+     long l = 13L;              long l = 13;           // equivalent: 13 is converted from type int         
+     long l = 40123456789L;     long l = 40123456789;  // error: too big for an int without conversion      
+ ╘════════════════════════════════════════════════════════════════════════════════════════════════════════╛
+ 
+byte b = 42;
+int i = 43;
+int result = b * i;       // b is promoted to int before multiplication
+
+You can never go the other way and assign a numeric value to a type with a smaller range without an explicit cast
+int i = 13;
+byte b = i; // Compile-time error, explicit cast needed
+byte b = (byte) i; // OK
+
+You can add a bit of formatting to your numeric literals by utilizing the “_” (underscore) character between 
+  digits. If you have particularly large strings of digits, you can break them up as in the following examples:
+    int RICHARD_NIXONS_SSN = 567_68_0515;
+    int for_no_reason = 1___2___3;
+    int JAVA_ID = 0xCAFE_BABE;
+    long grandTotal = 40_123_456_789L;
+
+
+Floating-point literals:
+  Floating-point values can be specified in decimal or scientific notation. Floating-point literals are of 
+  type double unless they are suffixed with an f or F, denoting that they are a smaller-precision float value.
+    double d = 8.31;
+    double e = 3.00e+8;
+    float f = 8.31F;
+    float g = 3.00e+8F;
+    float pi = 3.1415_9265F;
+
+
+Character literals
+  A literal character value can be specified either as a single-quoted character or an
+  escaped ASCII or Unicode sequence, also inside single quotes:
+    char a = 'a';
+    char newline = '\n';
+    char smiley = '\u263a';
+
+
+Subtype Polymorphism
+  For example, if you create a new class, Dog, that extends Animal, the new type, Dog, is considered a subtype 
+  of Animal. Objects of type Dog can then be used anywhere an object of type Animal can be used; an object of 
+  type Dog is said to be assignable to a variable of type Animal. This is called subtype polymorphism and is 
+  one of the primary features of an object-oriented language
+
+
+Strings in Java are objects:
+  they are therefore a reference type. String objects do, however, have some special help from the Java compiler 
+  that makes them look more like primitive types. Literal string values in Java source code, a series of 
+  characters or escape sequences between double quotes, are turned into String objects by the compiler. You can 
+  use a String literal directly, pass it as an argument to methods, or assign it to a String type variable:
+      System.out.println("Hello, World...");
+      String s = "I am the walrus...";
+      String t = "John said: \"I am the walrus...\"";
+The + symbol in Java is overloaded to work with strings as well as regular numbers. Overloading is a term 
+  used in languages that allow you to use the same method name or operator symbol when working with distinct 
+  data types. With numbers, + performs addition. With strings, + performs concatenation, which is what 
+  programmers call sticking two strings together
+
+
+Assignment
+  While declaring and initializing a variable is considered a statement with no resulting
+  value, variable assignment alone is, in fact, an expression:
+int i, j;     // statement with no resulting value
+int k = 6;    // also a statement with no result
+i = 5;        // both a statement and an expression
+j = (i = 5);  // both j and i are now 5
+
