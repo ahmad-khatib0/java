@@ -7,9 +7,9 @@ public class SimpleTriangle {
 
     // Use nested loops to fill it
     for (int i = 0; i < triangle.length; i++) {
-        triangle[i] = new int [i + 1];
-        for (int j = 0; j < i + 1; j++)
-            triangle[i][j] = i + j;
+      triangle[i] = new int[i + 1];
+      for (int j = 0; j < i + 1; j++)
+        triangle[i][j] = i + j;
     }
 
     // And finally, use nested loops to display it
