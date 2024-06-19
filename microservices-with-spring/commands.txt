@@ -1,0 +1,10 @@
+
+# -f is like watch,  --tail=0 means don’t want to see any previous log messages, only new ones
+$ docker-compose logs -f --tail=0
+
+# create new project 
+$ spring init  --boot-version=3.0.4 --type=gradle-project  --java-version=17 
+  --packaging=jar --name=product-service --package-name=se.magnus.microservices.core.product \
+  --groupId=se.magnus.microservices.core.product --dependencies=actuator,webflux \
+  --version=1.0.0-SNAPSHOT product-service
+

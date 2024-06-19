@@ -16,3 +16,42 @@ A fat JAR file contains not only the classes and resource files of the applicati
   application; that is, we only need to transfer one JAR file to an environment where we want to run the application 
   instead of transferring the application’s JAR file along with all the JAR files the application depends on.
 
+Spring Data
+Entity
+  An entity describes the data that will be stored by Spring Data. Entity classes are, in general, annotated 
+  with a mix of generic Spring Data annotations and annotations that are specific to each database technology.
+  (like: @Table(name = "review") for sql dbs,  and @Document for nosql dbs)
+  
+Repositories
+  Repositories are used to store and access data from different types of databases. In its most basic form, 
+  a repository can be declared as a Java interface, and Spring Data will generate its implementation on the 
+  fly using opinionated conventions. These conventions can be overridden and/or complemented by additional 
+  configuration and, if required, some Java code.
+  Spring Data also comes with some base Java interfaces, for example, CrudRepository, to make the definition 
+  of a repository even simpler. The base interface, CrudRepository, provides us with standard methods for 
+  create, read, update, and delete operations.
+
+The core concepts in Spring Cloud Stream are as follows:
+-- Message: A data structure that’s used to describe data sent to and received from a messaging system.
+-- Publisher: Sends messages to the messaging system, also known as a Supplier.
+-- Subscriber: Receives messages from the messaging system, also known as a Consumer.
+-- Destination: Used to communicate with the messaging system. Publishers use output destinations and 
+   subscribers use input destinations. Destinations are mapped by the specific binders to queues and topics 
+   in the underlying messaging system.
+-- Binder: A binder provides the actual integration with a specific messaging system, similar to
+   what a JDBC driver does for a specific type of database.
+
+
+plugins {
+  id 'java'
+  id 'org.springframework.boot' version '3.0.4'
+  id 'io.spring.dependency-management' version '1.1.0'
+}
+
+-- The java plugin adds the Java compiler to the project.
+-- The plugins org.springframework.boot and io.spring.dependency-management are declared,
+   which together ensure that Gradle will build a fat JAR file and that we don’t need to specify any
+   explicit version numbers on our Spring Boot starter dependencies. Instead, they are implied
+   by the version of the org.springframework.boot plugin, that is, 3.0.4.
+
+
