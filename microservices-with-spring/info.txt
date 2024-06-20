@@ -54,4 +54,17 @@ plugins {
    explicit version numbers on our Spring Boot starter dependencies. Instead, they are implied
    by the version of the org.springframework.boot plugin, that is, 3.0.4.
 
+# in ./03-dockerize/ application.yml files:  Spring profiles can be used to specify the environment-specific 
+  configuration, which, in this case, is a configuration that is only to be used when running the microservice 
+  in a Docker container. Other examples are configurations that are specific to dev, test, and production 
+  environments. Values in a profile override values from the default profile. By using YAML files, 
+  multiple Spring profiles can be placed in the same file, separated by ---.
+
+# When it comes to handling the suboptimal packaging of fat JAR files in Docker images, Spring Boot
+  addressed this issue in v2.3.0, making it possible to extract the content of a fat JAR file into a number
+  of folders. By default, Spring Boot creates the following folders after extracting a fat JAR file:
+• dependencies, containing all dependencies as JAR files
+• spring-boot-loader, containing Spring Boot classes that know how to start a Spring Boot application
+• snapshot-dependencies, containing snapshot dependencies, if any
+• application, containing application class files and resources
 
