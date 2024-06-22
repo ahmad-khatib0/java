@@ -1,0 +1,61 @@
+
+$ ./gradlew build && docker-compose build
+
+$ ./test-em-all.bash start
+
+# Launch two extra review microservice instances:
+$ docker-compose up -d --scale review=3
+
+# Verify that you can see three review instances
+$ docker-compose logs review | grep Started
+
+$ curl -H "accept:application/json" localhost:8761/eureka/apps -s | jq -r
+  .applications.application[].instance[].instanceId
+
+# try out the client-side load balancer
+$ curl localhost:8080/product-composite/1 -s | jq -r .serviceAddresses.rev
+
+# We can also take a look into the review instance’s log records
+$ docker-compose logs review | grep "Response size"
+
+# test scaling down
+$ docker-compose up -d --scale review=2
+
+$ curl localhost:8080/product-composite/1 -m 2
+
+# To simulate a Eureka server crash
+$ docker-compose up -d --scale review=2 --scale eureka=0
+
+$ curl localhost:8080/product-composite/1 -s | jq -r .serviceAddresses.rev
++ response will just like before we stopped the Eureka server contain the addresses of the two review instances,
+
+╒══════════════════════════════════════════════════════════════════╕
+ This shows that the client can make calls to existing instances, 
+ even though the Eureka server is no longer running.              
+└──────────────────────────────────────────────────────────────────┘
+
+# Starting up an extra instance of the product service
+$ docker-compose up -d --scale review=2 --scale eureka=0 --scale product=2
+
+# Call the API a couple of times and extract the address of the product service
+$ curl localhost:8080/product-composite/1 -s | jq -r .serviceAddresses.pro
+
+-- Since no Eureka server is running, the client will not be notified of 
+   the new product instance, and so all calls will go to the first instance
+
+
+# Starting up the Eureka server again
+$ docker-compose up -d --scale review=1 --scale eureka=1 --scale product=2
+# Make the following call a couple of times to extract the addresses of the product and the review service:
+$ curl localhost:8080/product-composite/1 -s | jq -r .serviceAddresses
+
+Verify that the following happens:
+• All calls go to the remaining review instance, demonstrating that the client has detected
+  that the second review instance is gone.
+• Calls to the product service are load-balanced over the two product instances, demonstrating 
+  the client has detected that there are two product instances available.
+
+
+finally: 
+$ docker-compose down
+

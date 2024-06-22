@@ -132,5 +132,30 @@ Writing automated tests that focus on persistence:
    To be able to see what events have been published on each topic, Spring Cloud Stream is configured
    to save published events in a separate consumer group, auditGroup, per topic.
 
+-- Spring Cloud Config supports storing configuration files in a number of different backends, such as: 
+• A Git repository, for example, on GitHub or Bitbucket
+• A local filesystem
+• HashiCorp Vault
+• A JDBC database
+
+## fault tolerance mechanisms 
+- A circuit breaker is used to prevent a chain of failure reaction if a remote service stops responding.
+- A rate limiter is used to limit the number of requests to a service during a specified time period.
+- A bulkhead is used to limit the number of concurrent requests to a service.
+  Retries are used to handle random errors that might happen from time to time.
+- A time limiter is used to avoid waiting too long for a response from a slow or unresponsive service.
+
+-- The idea behind round-robin DNS is that each instance of a microservice registers its IP address under the same 
+   name in a DNS server. When a client asks for IP addresses for the DNS name, the DNS server will return a list of 
+   IP addresses for the registered instances. The client can use this list of IP addresses to send requests 
+   to the microservice instances in a round-robin fashion, using the IP addresses one after another.
+
+## Eureka configuration parameters
+- Parameters for the Eureka server, prefixed with eureka.server.
+- Parameters for Eureka clients, prefixed with eureka.client. This is for clients who want to
+  communicate with a Eureka server.
+- Parameters for Eureka instances, prefixed with eureka.instance. This is for the microservice
+  instances that want to register themselves in the Eureka server.
+
 
 
