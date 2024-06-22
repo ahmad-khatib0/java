@@ -17,7 +17,8 @@ $ ./gradlew microservices:product-service:test --tests PersistenceTests
 # start the MongoDB CLI tool or mysql
 $ docker-compose exec mongodb mongosh ––quiet
 $ docker-compose exec mysql mysql -uuser -p review-db
-
 $ docker-compose exec mongodb mongosh product-db --quiet --eval "db.products.find()"
 $ docker-compose exec mysql mysql -uuser -p review-db -e "select * from reviews"
 
+# health check endpoint
+$ curl localhost:8080/actuator/health -s | jq .

@@ -80,3 +80,57 @@ Writing automated tests that focus on persistence:
      some of the tests to fail. Therefore, automatic rollback is disabled with the class-level 
      annotation @Transactional(propagation = NOT_SUPPORTED).
 
+-- The reactive support in Spring 5 is based on Project Reactor (https://projectreactor.io). Project Reactor 
+   is based on the Reactive Streams specification (http://www.reactive-streams.org), a standard for building
+   reactive applications. Project Reactor is fundamental – it is what Spring WebFlux, Spring WebClient, and 
+   Spring Data rely on to provide their reactive and non-blocking features.
+   The programming model is based on processing streams of data, and the core data types in Project
+   Reactor are Flux and Mono. A Flux object is used to process a stream of 0...n elements and a Mono
+   object is used to process a stream that either is empty or returns at most one element
+   
+## Spring Cloud Stream
+-- The programming model is based on a functional paradigm, where functions implementing one of
+   the functional interfaces Supplier, Function, or Consumer in the java.util.function package can
+   be chained together to perform decoupled event-based processing. To trigger such functional-based
+   processing externally, from non-functional code, the helper class StreamBridge can be used
+
+# Handling challenges with messaging
+- Consumer groups
+  The problem here is, if we scale up the number of instances of a message consumer, for example, if
+  we start two instances of the product microservice, both instances of the product microservice will
+  consume the same messages,
+- Retries and dead-letter queues If a consumer fails to process a message, it may be re-queued for the 
+  failing consumer until it is successfully processed. If the content of the message is invalid, also 
+  known as a poisoned message, the message will block the consumer from processing other messages until 
+  it is manually removed. If the failure is due to a temporary problem, for example, the database can’t be 
+  reached due to a temporary network error, the processing will probably succeed after a number of retries.
+  It must be possible to specify the number of retries until a message is moved to another storage for fault 
+  analysis and correction. A failing message is typically moved to a dedicated queue called a dead-letter 
+  queue. To avoid overloading the infrastructure during temporary failure, for example, a network error, it 
+  must be possible to configure how often retries are performed, preferably with an increasing length of 
+  time between each retry.
+- Guaranteed order and partitions If the business logic requires that messages are consumed and processed 
+  in the same order as they were sent, we cannot use multiple instances per consumer to increase processing 
+  performance; for example, we cannot use consumer groups. This might, in some cases, lead to an unacceptable 
+  latency in the processing of incoming messages. We can use partitions to ensure that messages are delivered 
+  in the same order as they were sent but without losing performance and scalability. In most cases, strict 
+  order in the processing of messages is only required for messages that affect the same business entities. 
+  For example, messages affecting the product with product ID 1 can, in many cases, be processed independently 
+  of messages that affect the product with product ID 2. This means that the order only needs to be guaranteed 
+  for messages that have the same product ID. The solution to this is to make it possible to specify a key for 
+  each message, which the messaging system can use to guarantee that the order is kept between messages with 
+  the same key. This can be solved by introducing sub-topics, also known as partitions, in a topic. The messaging 
+  system places messages in a specific partition based on its key. Messages with the same key are always placed 
+  in the same partition. The messaging system only needs to guarantee the delivery order for messages in the 
+  same partition. To ensure the order of the messages, we configure one consumer instance per partition within 
+  a consumer group. By increasing the number of partitions, we can allow a consumer to increase its number of 
+  instances. This increases its message-processing performance without losing the delivery order.
+
+-- When using Spring Cloud Stream with Kafka, events are retained in the topics, even after 
+   consumers have processed them. However, when using Spring Cloud Stream with RabbitMQ, 
+   the events are removed after they have been processed successfully.
+   To be able to see what events have been published on each topic, Spring Cloud Stream is configured
+   to save published events in a separate consumer group, auditGroup, per topic.
+
+
+
