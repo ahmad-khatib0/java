@@ -11,3 +11,13 @@ $ spring init  --boot-version=3.0.4 --type=gradle-project  --java-version=17
 # view fat JAR file content 
 $ unzip -l microservices/product-service/build/libs/product-service-1.0.0-SNAPSHOT.jar
 
+# in: ./05-persistent-dataa/,  run tests: 
+$ ./gradlew microservices:product-service:test --tests PersistenceTests
+
+# start the MongoDB CLI tool or mysql
+$ docker-compose exec mongodb mongosh ––quiet
+$ docker-compose exec mysql mysql -uuser -p review-db
+
+$ docker-compose exec mongodb mongosh product-db --quiet --eval "db.products.find()"
+$ docker-compose exec mysql mysql -uuser -p review-db -e "select * from reviews"
+

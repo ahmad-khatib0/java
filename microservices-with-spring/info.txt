@@ -68,3 +68,15 @@ plugins {
 • snapshot-dependencies, containing snapshot dependencies, if any
 • application, containing application class files and resources
 
+Writing automated tests that focus on persistence: 
+  When writing persistence tests, we want to start a database when the tests begin and tear it down
+  when the tests are complete. However, we don’t want the tests to wait for other resources to start up,
+  for example, a web server such as Netty (which is required at runtime).
+  Spring Boot comes with two class-level annotations tailored to this specific requirement:
+- @DataMongoTest: This annotation starts up a MongoDB database when the test starts.
+- @DataJpaTest: This annotation starts up a SQL database when the test starts:
+   • By default, Spring Boot configures the tests to roll back updates to the SQL database to 
+     minimize the risk of negative side effects on other tests. In our case, this behavior will cause 
+     some of the tests to fail. Therefore, automatic rollback is disabled with the class-level 
+     annotation @Transactional(propagation = NOT_SUPPORTED).
+
