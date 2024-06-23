@@ -200,3 +200,9 @@ Writing automated tests that focus on persistence:
 - The implicit grant flow is deprecated and omitted from the specification, due to its less secure nature.
 - The resource owner password credentials grant flow is also deprecated and omitted from the spec, for same reasons.
 
+# When it comes to setting up a config server, there are a number of options to consider:
+• Selecting a storage type for the configuration repository
+• Deciding on the initial client connection, either to the config server or to the discovery server
+• Securing the configuration, both against unauthorized access to the API and by avoiding storing
+  sensitive information in plain text in the configuration repository
+

@@ -1,0 +1,47 @@
+
+# for the config server:  we will use the following endpoints in the API:
+- /actuator: The standard actuator endpoint exposed by all microservices. As always, these should be used 
+  with care. They are very useful during development but must be locked down before being used in production.
+- /encrypt and /decrypt: Endpoints for encrypting and decrypting sensitive information. These must also 
+  be locked down before being used in production.
+- /{microservice}/{profile}: Returns the configuration for the specified microservice 
+  and the specified Spring profile.
+
+
+## Trying out the Spring Cloud Config Server
+$ ./gradlew build && docker-compose build
+$ ./test-em-all.bash start
+# Getting the configuration using the config server API
+$ curl https://dev-usr:dev-pwd@localhost:8443/config/product/docker -ks | jq .
+
+# the explanationsfor this response are as follows:
+-- The response contains properties from a number of property sources, one per property file and Spring 
+   profile that matched the API request. The property sources are returned in priority order; if a property 
+   is specified in multiple property sources, the first property in the response takes precedence. The 
+   preceding sample response contains the following property sources, in the following priority order:
+    - /config-repo/product.yml, for the docker Spring profile
+    - /config-repo/product.yml, for the default Spring profile
+    - /config-repo/application.yml, for the docker Spring profile
+    - /config-repo/application.yml, for the default Spring profile
+++ For example, the port used will be 8080 and not 7001, since "server.port": 8080 
+   is specified before "server.port": 7001 in the preceding response.
+   
+-- Sensitive information, such as the passwords to Eureka and RabbitMQ, are returned in plain text, 
+   for example, "p" and "guest", but they are encrypted on disk. In the configuration file, application.yml,
+
+
+## Encrypting and decrypting sensitive information
+# Information can be encrypted and decrypted using the /encrypt and /decrypt endpoints exposed by the 
+  config server. The /encrypt endpoint can be used to create encrypted values to be placed in the property 
+  file in the config repository. The /decrypt endpoint can be used to verify encrypted information that 
+  is stored on disk in the config repository
+# E,g:  To encrypt the hello world string
+$ curl -k https://dev-usr:dev-pwd@localhost:8443/config/encrypt --data-urlencode "hello world"
+# To decrypt the returned encrypted value,
+$ curl -k https://dev-usr:dev-pwd@localhost:8443/config/decrypt -d d91001...f2fc206
+
+
+# cleanup 
+$ docker-compose down
+
+
