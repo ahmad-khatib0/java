@@ -1,0 +1,93 @@
+# If you want to replace a self-signed certificate at runtime: 
+# in the root folder 
+$ mkdir keystore
+$ keytool -genkeypair -alias localhost -keyalg RSA -keysize 2048 -storetype
+  PKCS12 -keystore keystore/edge-test.p12 -validity 3650
+
+$ Update the Docker Compose file, docker-compose.yml
+gateway:
+  environment:
+    - SPRING_PROFILES_ACTIVE=docker
+    - SERVER_SSL_KEY_STORE=file:/keystore/edge-test.p12
+    - SERVER_SSL_KEY_STORE_PASSWORD=testtest
+  volumes:
+    - $PWD/keystore:/keystore
+  build: spring-cloud/gateway
+  mem_limit: 512m
+  ports:
+    - "8443:8443"
+
+# If the edge server is up and running, it needs to be restarted
+$ docker-compose up -d --scale gateway=0
+$ docker-compose up -d --scale gateway=1
+
+# The new certificate is now in use!
+
+
+## Building and running the automated tests
+$ ./gradlew build && docker-compose build
+
+# Start the system landscape in Docker and run the usual tests 
+$ ./test-em-all.bash start
+
+# Testing the protected discovery server
+$ curl -H "accept:application/json" https://u:p@localhost:8443/eureka/api/apps
+  -ks | jq -r .applications.application[].instance[].instanceId
+
+# Acquiring access tokens 
+@ Acquiring access tokens using the client credentials grant flow
+# token for the writer client
+$ curl -k https://writer:secret-writer@localhost:8443/oauth2/token -d \
+  grant_type=client_credentials -d scope="product:read product:write" -s | jq .
+  
+# access token for the reader client
+$ curl -k https://reader:secret-reader@localhost:8443/oauth2/token \
+  -d grant_type=client_credentials -d scope="product:read" -s | jq .
+
+@ Acquiring access tokens using the authorization code grant flow
+# To get an authorization code for the reader client, use the following URL in a web browser: 
+$ https://localhost:8443/oauth2/authorize?response_type=code&client_id=reader
+  &redirect_uri=https://my.redirect.uri&scope=product:read&state=35725
+$ When asked to log in by the web browser, use the credentials specified in the configuration of
+  the authorization server, u and p:
+$ We will be asked to give the reader client consent to call the APIs in our name
+$ copy the url after redirection: https://my.redirect.uri/?code=7XBs...0mmyk&state=35725
+$ Extract the authorization code from the code parameter
+# Pretend you are the backend server that exchanges the authorization code with an access token
+$ curl -k https://reader:secret-reader@localhost:8443/oauth2/token \
+  -d grant_type=authorization_code -d client_id=reader \
+  -d redirect_uri=https://my.redirect.uri -d code=$CODE -s | jq .
+++ can see that we got similar information in the response as we got from the client credentials flow
+
+++ To get an authorization code for the writer client, use the following URL: 
+  https://localhost:8443/oauth2/authorize?response_type=code&client_id=writer
+  &redirect_uri=https://my.redirect.uri&scope=product:read+product:write&state=72489 .
+++ To exchange the code for an access token for the writer client: 
+   curl -k https://writer:secret-writer@localhost:8443/oauth2/token -d grant_type=authorization_code \
+   -d client_id=writer -d redirect_uri=https://my.redirect.uri -d code=$CODE -s | jq .
+
+
+## Calling protected APIs using access tokens
+$ ACCESS_TOKEN={a-reader-access-token} 
+$ curl https://localhost:8443/product-composite/1 -k -H "Authorization: Bearer $ACCESS_TOKEN" -i
+
+# try to access an updating API, e.g the delete API, with an access token acquired for the reader client
+$ ACCESS_TOKEN={a-reader-access-token}
+$ curl https://localhost:8443/product-composite/999 -k -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE -i
+
+## Testing Swagger UI with OAuth 2.0
+$ https:// localhost:8443/openapi/swagger-ui.html
+$ On the start page, we can now see a new button, next to the Servers drop-down list, with the text Authorize
+$ Click on the Authorize button to initiate an authorization code grant flow.
+$ Select all scopes by clicking on the link with the text select all and then clicking on the Authorize button
+++ You will then be redirected to the authorization server. If you are not already logged in from
+   the web browser used, the authorization server will ask for your credentials as in the Acquiring
+   access tokens using the authorization code grant flow section.
+$ Log in with username u and password p
+$ The authorization server will ask for your consent. Select both scopes and click on the Submit Consent button
+$ Swagger UI will complete the authorization process by showing information about the completed grant flow.
+
+
+
+
+

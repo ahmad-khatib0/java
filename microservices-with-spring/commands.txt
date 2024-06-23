@@ -22,3 +22,8 @@ $ docker-compose exec mysql mysql -uuser -p review-db -e "select * from reviews"
 
 # health check endpoint
 $ curl localhost:8080/actuator/health -s | jq .
+
+# self-signed certificate 
+$ keytool -genkeypair -alias localhost -keyalg RSA -keysize 2048 \
+  -storetype PKCS12 -keystore edge.p12 -validity 3650
+

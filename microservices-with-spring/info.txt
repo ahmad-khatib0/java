@@ -165,3 +165,38 @@ Writing automated tests that focus on persistence:
 • An ID, that is, the name of the route
 
 
+# OAuth 2.0 components  
+- Resource owner: The end user.
+- Client: The third-party client application, for example, a web app or a native mobile app, that
+  wants to call some protected APIs in the name of the end user.
+- Resource server: The server that exposes the APIs that we want to protect.
+- Authorization server: The authorization server issues tokens to the client after the resource
+  owner, that is, the end user, has been authenticated. The management of user information and the 
+  authentication of users are typically delegated, behind the scenes, to an Identity Provider (IdP)
+
+++ A client is registered in the authorization server and is given a client ID and a client secret. The client
+   secret must be protected by the client, like a password. A client also gets registered with a set of 
+   allowed redirect URIs that the authorization server will use after a user has been authenticated to send
+   authorization codes and tokens that have been issued back to the client application.
+
+# The OAuth 2.0 specification defines four authorization grant flows for issuing access tokens: 
+- Authorization code grant flow: This is the safest, but also the most complex, grant flow. This grant flow 
+  requires that the user interacts with the authorization server using a web browser for authentication 
+  and giving consent to the client application, 
+- Implicit grant flow: This flow is also web browser-based but intended for client applications that are 
+  not able to keep a client secret protected, for example, a single-page web application. The web browser 
+  gets an access token back from the authorization server instead of an authorization code. Since the implicit 
+  grant flow is less secure than the authorization code grant flow, the client can’t request a refresh token.
+- Resource owner password credentials grant flow: If a client application can’t interact with a web browser, 
+  it can fall back on this grant flow. In this grant flow, the user must share their credentials with the 
+  client application and the client application will use these credentials to acquire an access token.
+- Client credentials grant flow: In the case where a client application needs to call an API unrelated to a 
+  specific user, it can use this grant flow to acquire an access token using its own client ID and client secret.
+
+# The most important improvements in OAuth 2.1 are:
+- PKCE is integrated into the authorization code grant flow. The use of PKCE will be required by public 
+  clients to improve their security, as described above. For confidential clients, where the authorization 
+  server can verify their credentials, the use of PKCE is not required, only recommended.
+- The implicit grant flow is deprecated and omitted from the specification, due to its less secure nature.
+- The resource owner password credentials grant flow is also deprecated and omitted from the spec, for same reasons.
+
