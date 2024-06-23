@@ -1,0 +1,105 @@
+server.port: 8080
+
+spring.application.name: gateway
+
+app.eureka-server: localhost
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://${app.eureka-server}:8761/eureka/
+    initialInstanceInfoReplicationIntervalSeconds: 5
+    registryFetchIntervalSeconds: 5
+  instance:
+    leaseRenewalIntervalInSeconds: 5
+    leaseExpirationDurationInSeconds: 5
+
+spring.cloud.gateway.routes:
+
+#  The name of the route is product-composite.
+- id: product-composite
+# If the route is selected by its predicates, the request will be routed to the service that 
+# is named product-composite in the discovery service, Netflix Eureka. The protocol lb:// is 
+# used to direct Spring Cloud Gateway to use the client-side load balancer to look up the 
+# destination in the discovery service.
+  uri: lb://product-composite
+# used to specify what requests this route should match. 
+# ** matches zero or more elements in the path.
+  predicates:
+  - Path=/product-composite/**
+
+- id: product-composite-swagger-ui
+  uri: lb://product-composite
+  predicates:
+  - Path=/openapi/**
+
+- id: eureka-api
+  uri: http://${app.eureka-server}:8761
+# The {segment} part in the Path value matches zero or more elements in 
+# the path and will be used to replace the {segment} part in the SetPath value.
+  predicates:
+  - Path=/eureka/api/{segment}
+  filters:
+  - SetPath=/eureka/{segment}
+
+- id: eureka-web-start
+  uri: http://${app.eureka-server}:8761
+  predicates:
+  - Path=/eureka/web
+  filters:
+  - SetPath=/
+
+- id: eureka-web-other
+  uri: http://${app.eureka-server}:8761
+  predicates:
+  - Path=/eureka/**
+
+# From the preceding configuration, we can take the following notes. The ${app.eureka-server} 
+# property is resolved by Spring’s property mechanism, depending on what Spring profile is activated:
+# 1- When running the services on the same host without using Docker, for example, for debugging
+#    purposes, the property will be translated to localhost using the default profile.
+# 2- When running the services as Docker containers, the Netflix Eureka server will run in a 
+#    container with the DNS name eureka. Therefore, the property will be translated into eureka using
+#    the docker profile.
+
+# To make calls to http://i.feel.lucky:8080/headerrouting return 200 OK
+- id: host_route_200
+  uri: http://httpstat.us
+  predicates:
+  - Host=i.feel.lucky:8080
+  - Path=/headerrouting/**
+  filters:
+  - SetPath=/200
+
+# To make calls to http://im.a.teapot:8080/headerrouting return 418 I'm a teapot,
+- id: host_route_418
+  uri: http://httpstat.us
+  predicates:
+  - Host=im.a.teapot:8080
+  - Path=/headerrouting/**
+  filters:
+  - SetPath=/418
+
+# to make calls to all other hostnames return 501 Not Implemented
+- id: host_route_501
+  uri: http://httpstat.us
+  predicates:
+  - Path=/headerrouting/**
+  filters:
+  - SetPath=/501
+
+management.endpoint.gateway.enabled: true
+management.endpoint.health.show-details: "ALWAYS"
+management.endpoints.web.exposure.include: "*"
+
+logging:
+  level:
+    root: INFO
+    # how it decides where to route incoming requests to
+    org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator: INFO
+    org.springframework.cloud.gateway: TRACE
+
+---
+spring.config.activate.on-profile: docker
+
+app.eureka-server: eureka

@@ -158,4 +158,10 @@ Writing automated tests that focus on persistence:
   instances that want to register themselves in the Eureka server.
 
 
+# A route is defined by the following:
+• Predicates, which select a route based on information in the incoming HTTP request
+• Filters, which can modify both the request and/or the response
+• A destination URI, which describes where to send a request
+• An ID, that is, the name of the route
+
 

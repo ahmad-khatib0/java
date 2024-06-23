@@ -1,0 +1,51 @@
+
+
+$ ./gradlew clean build && docker-compose build
+
+#   start the system landscape in Docker and run the usual tests 
+$ ./test-em-all.bash start
+
+# Examining what is exposed outside the Docker engine
+# Use the docker-compose ps command to see which ports are exposed by our services:
+$ docker-compose ps gateway eureka product-composite product recommendation review
+
+# If we want to see what routes the edge server has set up (using jq to limit verbosity),
+$ curl localhost:8080/actuator/gateway/routes -s | jq '.[] | {"\(.route_id)": "\(.uri)"}' | grep -v '{\|}'
+
+
+# Calling the product composite API through the edge server
+$ docker-compose logs -f --tail=0 gateway 
+$ curl http://localhost:8080/product-composite/1
+
+# Calling the Swagger UI through the edge server
+$ go to: http://localhost:8080/openapi/swagger-ui.html
+
+
+# Calling Eureka through the edge server
+# 1- call the Eureka API through the edge server to see what instances are currently registered:
+$ curl -H "accept:application/json"  localhost:8080/eureka/api/apps -s | \
+  jq -r .applications.application[].instance[].instanceId
+
+#  Next, open the Eureka web page in a web browser
+$ http://localhost:8080/eureka/web
+
+# Routing based on the host header
+++ Normally, the hostname in the request is set automatically in the Host header by the HTTP client.
+   When testing the edge server locally, the hostname will be localhost – that is not so useful when
+   testing hostname-based routing. However, we can cheat by specifying another hostname in the Host
+   header in the call to the API
+
+# To call for the i.feel.lucky hostname, use this code: 
+$ curl http://localhost:8080/headerrouting -H "Host: i.feel.lucky:8080" # (200)
+$ curl http://localhost:8080/headerrouting -H "Host: im.a.teapot:8080"  # (418)
+$ curl http://localhost:8080/headerrouting                              # (501 Not Implemented )
+
+# We can also use i.feel.lucky and im.a.teapot as real hostnames in the requests (hosts file)
+$ sudo bash -c "echo '127.0.0.1 i.feel.lucky im.a.teapot' >> /etc/hosts"
+$ curl http://i.feel.lucky:8080/headerrouting # so now its wihout the host header
+$ curl http://im.a.teapot:8080/headerrouting
+
+# cleanup
+$ docker-compose down
+$ 127.0.0.1 i.feel.lucky im.a.teapot       # remove it from hosts file
+
