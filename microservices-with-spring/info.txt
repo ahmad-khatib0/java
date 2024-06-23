@@ -206,3 +206,17 @@ Writing automated tests that focus on persistence:
 • Securing the configuration, both against unauthorized access to the API and by avoiding storing
   sensitive information in plain text in the configuration repository
 
+
+Introducing the retry mechanism
+  The retry mechanism is very useful for random and infrequent faults, such as temporary network
+  glitches. The retry mechanism can simply retry a failed request a number of times with a configurable
+  delay between the attempts. One very important restriction on the use of the retry mechanism is that
+  the services that it retries must be idempotent, that is, calling the service one or many times with the
+  same request parameters gives the same result. For example, reading information is idempotent, but
+  creating information is typically not. You don’t want a retry mechanism to accidentally create two
+  orders just because the response from the first order’s creation got lost in the network.
+
+
+
+
+

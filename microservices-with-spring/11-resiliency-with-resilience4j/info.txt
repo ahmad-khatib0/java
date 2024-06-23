@@ -1,0 +1,73 @@
+
+Resilience4j exposes information about circuit breakers at runtime in a number of ways:
+
+• The current state of a circuit breaker can be monitored using the microservice’s actuator
+  health endpoint, /actuator/health.
+• The circuit breaker also publishes events on an actuator endpoint, for example, state 
+  transitions and /actuator/circuitbreakerevents.
+• Finally, circuit breakers are integrated with Spring Boot’s metrics system and can use it to
+  publish metrics to monitoring tools such as Prometheus.
+
+ ╒════════════════════════════════════════════════════════════════════════════════════════════════════╕
+   Be careful when configuring retry and circuit breaker settings so that, for example, the           
+   circuit breaker doesn’t open the circuit before the intended number of retries has been completed! 
+ └────────────────────────────────────────────────────────────────────────────────────────────────────┘
+  
+
+## Trying out the circuit breaker and retry mechanism
+$ ./gradlew build && docker-compose build
+$ ./test-em-all.bash start
+# Verifying that the circuit is closed under normal operations
+  Before we can call the API, we need an access token: 
+$ unset ACCESS_TOKEN
+  ACCESS_TOKEN=$(curl -k https://writer:secret-writer@localhost:8443/oauth2/token
+  -d grant_type=client_credentials -d scope="product:read product:write" -s | jq -r .access_token)
+  echo $ACCESS_TOKEN
+
+# Try a normal request and verify that it returns the HTTP response code 200:
+$ curl -H "Authorization: Bearer $ACCESS_TOKEN" -k https://localhost:8443/product-composite/1 
+  -w "%{http_code}\n" -o /dev/null -s
+++ The -w "%{http_code}\n" switch is used to print the HTTP return status.
+
+# Verify that the circuit breaker is closed using the health API:
+$ docker-compose exec product-composite curl -s http://product-composite:8080/actuator/health | 
+  jq -r .components.circuitBreakers.details.product.details.state
+
+# Forcing the circuit breaker to open when things go wrong
+$ curl -H "Authorization: Bearer $ACCESS_TOKEN" -k https://localhost:8443/product-composite/1?delay=3 -s | jq .
+
+# Wait 10 seconds for the circuit breaker to transition to half-open, 
+  and then run the following command to verify that the circuit is now in a half-open state
+$ docker-compose exec product-composite curl -s http://product-composite:8080/actuator/health | 
+  jq -r .components.circuitBreakers.details.product.details.state
+
+# Closing the circuit breaker again
+# Let’s submit three normal requests to close the circuit breaker:
+$ curl -H "Authorization: Bearer $ACCESS_TOKEN" -k https://localhost:8443/product-composite/1 
+  -w "%{http_code}\n" -o /dev/null -s
+# They should all respond with 200. Verify that the circuit is closed again by using the health API:
+$ docker-compose exec product-composite curl -s http://product-composite:8080/actuator/health | 
+  jq -r .components.circuitBreakers.details.product.details.state
+
+# Wrap this up by listing the last three state transitions 
+$ docker-compose exec product-composite curl -s 
+  http://product-composite:8080/actuator/circuitbreakerevents/product/STATE_TRANSITION | jq -r
+  '.circuitBreakerEvents[-3].stateTransition, .circuitBreakerEvents[-2].stateTransition, .circuitBreakerEvents[-1].stateTransition'
+
+
+## Trying out retries caused by random errors
+# To force a random error to occur, run the following command a couple of times:
+$ time curl -H "Authorization: Bearer $ACCESS_TOKEN" -k 
+  https://localhost:8443/product-composite/1?faultPercent=25 -w "%{http_code}\n" -o /dev/null -s
+
+# After you have noticed a response time of 1 second, indicating that the request required one 
+  retry to succeed, run the following command to see the last two retry events:
+$ docker-compose exec product-composite curl -s http://product-composite:8080/actuator/retryevents | 
+  jq '.retryEvents[-2], .retryEvents[-1]'
+++ You should be able to see the failed request and the next successful attempt. 
+   The creationTime timestamps are expected to differ by 1 second
+
+
+# cleanup
+$ docker-compose down
+
