@@ -1,0 +1,35 @@
+
+By default, trace headers are propagated between microservices using W3C trace context headers
+  (https://www.w3.org/TR/trace-context/), most importantly the traceparent header, but can be
+  configured to use OpenZipkin’s B3 headers
+
+
+# Trying out distributed tracing
+$ ./gradlew build && docker-compose build
+$ ./test-em-all.bash start
+
+# Before we can call the API, we need an access token
+$ unset ACCESS_TOKEN
+  ACCESS_TOKEN=$(curl -k https://writer:secret-writer@localhost:8443/oauth2/token
+  -d grant_type=client_credentials -d scope="product:read product:write" -s | jq -r .access_token) 
+  echo $ACCESS_TOKEN
+
+# Sending a successful API request
+$ curl -H "Authorization: Bearer $ACCESS_TOKEN" -k 
+  https://localhost:8443/product-composite/1 -w "%{http_code}\n" -o /dev/null -s
+
+$ http://localhost:9411/zipkin/
+$ find the trace information for our request
+
+
+## Sending an API request that triggers asynchronous processin
+$ curl -X DELETE -H "Authorization: Bearer $ACCESS_TOKEN" -k 
+  https://localhost:8443/product-composite/12345 -w "%{http_code}\n" -o /dev/null -s
+++ Remember that the delete op is idempotent, so it will succeed even if the product doesn’t exist!
+$ http://localhost:9411/zipkin/
+$ find the trace information for our request
+
+# cleanup 
+$ docker-compose down
+
+
