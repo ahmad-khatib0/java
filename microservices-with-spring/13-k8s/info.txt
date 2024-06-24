@@ -1,0 +1,28 @@
+
+Working with Minikube profiles
+  In order to run multiple Kubernetes clusters locally, Minikube comes with the concept of profiles. For example, 
+  if you want to work with multiple versions of Kubernetes, you can create multiple Ku- bernetes clusters using 
+  Minikube. Each cluster will be assigned a separate Minikube profile. Most of the Minikube commands accept a 
+  --profile flag (or -p for short), which can be used to specify which of the Kubernetes clusters the 
+  command will be applied to
+
+$ minikube profile my-profile
+$ minikube config get profile
+
+$ minikube start \
+    --profile=handson-spring-boot-cloud --memory=10240 \
+    --cpus=4 --disk-size=30g --kubernetes-version=v1.26.1 \
+    --driver=docker --ports=8080:80 --ports=8443:443 \
+    --ports=30080:30080 --ports=30443:30443
+$ minikube profile handson-spring-boot-cloud
+$ minikube addons enable ingress
+$ minikube addons enable metrics-server
+
+
+# 1- Create a Pod with a small container based on the Docker image curlimages/curl,
+# 2- Run the curl -s 'http://nginx-service:80' command inside the container and redirect
+     the output to the Terminal using the -i option.
+# 3- Delete the Pod using the --rm option.
+$ kubectl run -i --rm --restart=Never curl-client --image=curlimages/curl
+  --command -- curl -s 'http://nginx-service:80'
+
