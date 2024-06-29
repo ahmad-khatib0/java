@@ -1,0 +1,202 @@
+
+$ cd kubernetes/helm/components/config-server
+$ helm dependency update .
+$ helm template . -s templates/configmap_from_file.yaml
+++ From the output: The data field contains the content of all files in the config-repo folder.
+
+
+## Example of using the Secrets template
+$ cd kubernetes/helm
+$ for f in components/*; do helm dependency update $f; done
+$ helm dependency update environments/dev-env
+$ helm template environments/dev-env -s templates/secrets.yaml
+
+## Example of using the Service template
+# To see the Service manifest generated for a core component, for the product microservice:
+$ cd kubernetes/helm
+$ helm dependency update components/product
+$ helm template components/product -s templates/service.yamlhelm template components/gateway -s templates/service.yaml
+
+# To see the Service manifest generated for a component that overrides the settings in the common chart
+$ cd kubernetes/helm
+$ helm dependency update components/gateway
+$ helm template components/gateway -s templates/service.yaml
+
+# Example of using the Deployment template
+$ cd kubernetes/helm
+$ helm dependency update components/product
+$ helm template components/product -s templates/deployment.yaml
+# To see the Deployment manifest generated for a component that overrides the settings in the common
+  chart, run the following commands in the same dir for the MongoDB component:
+$ helm dependency update components/mongodb
+$ helm template components/mongodb -s templates/deployment.yaml
+
+
+## 
+++ The config server differs from the other charts in that it uses a ConfigMap to store the config-repo
+   containing the configuration files for all the other microservices. In its template folder, it defines a
+   template for a ConfigMap that is based on the named template in the common chart for ConfigMaps
+   {{- template "common.configmap_from_file" . -}}
+  The template expects to find the property files in the charts folder, config-repo. To avoid duplicating
+  the config-repo from $BOOK_HOME/Chapter16/config-repo, a soft link, also known as a symbolic
+  link, has been created with the command:
+$ cd $BOOK_HOME/Chapter16/kubernetes/helm/components/config-server
+$ ln -s ../../../../config-repo config-repo  
+
+
+## Deploying to Kubernetes for development and test
+# Building Docker images
+$ ./gradlew build
+# directs the local Docker client to communicate with the Docker engine in Minikube.
+$ eval $(minikube docker-env)
+$ docker-compose build
+
+# Resolving Helm chart dependencies
+# First, we update the dependencies in the components, environments folders:
+$ for f in kubernetes/helm/components/*; do helm dep up $f; done
+$ for f in kubernetes/helm/environments/*; do helm dep up $f; done
+# Finally, we verify that the dependencies for the dev-env folder look good:
+$ helm dep ls kubernetes/helm/environments/dev-env/
+
+# Deploying to Kubernetes
+# To avoid a slow Deployment process due to Kubernetes downloading Docker images (potentially causing the 
+  liveness probes we described previously to restart our Pods), run the following docker pull commands to 
+  download the images in advance:
+$ eval $(minikube docker-env)
+$ docker pull mysql:8.0.32
+$ docker pull mongo:6.0.4
+$ docker pull rabbitmq:3.11.8-management
+$ docker pull openzipkin/zipkin:2.24.0
+# Before using the Helm charts, render the templates using the helm template command to see
+  what the manifests will look like:
+$ helm template kubernetes/helm/environments/dev-env
+# To also verify that the Kubernetes cluster will actually accept the rendered manifest: 
+$ helm install --dry-run --debug hands-on-dev-env kubernetes/helm/environments/dev-env
+# To initiate the Deployment of the complete system landscape, including creating the Namespace, hands-on,
+$ helm install hands-on-dev-env kubernetes/helm/environments/dev-env -n hands-on --create-namespace
+# Set the newly created namespace as the default namespace for kubectl:
+$ kubectl config set-context $(kubectl config current-context) --namespace=hands-on
+$ kubectl get pods --watch
+# Wait for all the Pods in the Namespace to be ready with the command: 
+$ kubectl wait --timeout=600s --for=condition=ready pod --all
+# To see the Docker images that are used, run the following command:
+$ kubectl get pods -o json | jq .items[].spec.containers[].image
+
+# Testing the Deployment
+$ PORT=30443 USE_K8S=true ./test-em-all.bash
+
+## Testing Spring Boot’s support for graceful shutdown and probes for liveness and readiness
+++ first we have changed to: RESILIENCE4J_TIMELIMITER_INSTANCES_PRODUCT_TIMEOUTDURATION: 20s
+   in kubernetes/helm/environments/dev-env/values.yaml
+$ ACCESS_TOKEN=$(curl -d grant_type=client_credentials -ks https://writer:secret-writer@localhost:30443/oauth2/token \
+  -d scope="product:read product:write" | jq .access_token -r)
+# Make a test request and ask for a delay of 5 seconds using the delay query parameter:
+$ time curl -kH "Authorization: Bearer $ACCESS_TOKEN" \ https://localhost:30443/product-composite/1?delay=5
+# Use Siege to start requests that take 5 seconds to complete, with five concurrent users sending
+   requests with a random delay between 0 and 2 seconds to spread out the requests slightly:
+$ siege -c5 -d2 -v -H "Authorization: Bearer $ACCESS_TOKEN" https://localhost:30443/product-composite/1?delay=5
+# Watch log output from the product Service in a separate terminal window
+$ kubectl logs -f --tail=0 -l app.kubernetes.io/name=product
+++ We will now ask Kubernetes to restart the product Deployment. The restart will first start a new Pod before 
+   the old one is shut down, meaning that none of the requests sent by Siege should be affected by the restart. 
+   Of specific interest are the few requests that are processed by the old Pod when it starts to shut down. 
+   If the graceful shutdown works as expected, none of the active requests should fail. 
+$ kubectl rollout restart deploy/product
+# In the log output from the now-stopped product Pod, you should see that all requests were allowed to 
+  terminate gracefully before the application was stopped.
+
+# Now let’s run the second test, with requests taking a longer time to complete than the shutdown wait period:
+# Restart Siege, requesting longer response times, above the wait limit of 10 seconds. Start five concurrent 
+  users, asking for a 15-second response time and a random delay between the requests of 0–5 seconds
+$ siege -c5 -d5 -v -H "Authorization: Bearer $ACCESS_TOKEN" https://localhost:30443/product-composite/1?delay=15
+# Watch the log output from the product Pod: 
+$ kubectl logs -f --tail=0 -l app.kubernetes.io/name=product
+$ kubectl rollout restart deploy/product
+++ Follow the log output from the product Pod. Once it has shut down, you should be able to see
+   that not all requests were allowed to terminate gracefully before the application was stopped.
+
+## Clean up after the tests:
+# Roll back the latest Helm release to get rid of the increased timeout (RESILIENCE4J_TIMELIMITER_INSTANCES_PRODUCT_TIMEOUTDURATION):
+$ helm rollback hands-on-dev-env -n hands-on --wait
+$ Also remove the increased timeout setting in the file kubernetes/helm/environments/dev-env/values.yaml.
+# Run test-em-all.bash to verify that the configuration is rolled back:
+$ PORT=30443 USE_K8S=true ./test-em-all.bash
+# Run the following command to get output from the product Service’s (or any service) liveness probe 
+$ kubectl exec -it deploy/product -- curl localhost/actuator/health/liveness -s | jq .
+# Run the following command to get output from the product Service’s readiness probe:
+$ kubectl exec -it deploy/product -- curl localhost/actuator/health/readiness -s | jq .
+$ kubectl delete namespace hands-on
+
+
+╒═════════════════════════════════════════════════════════════════════════════════════════╕
+   # to update the helm installation after a change                                        
+   # Update the Helm installation                                                          
+   $ helm upgrade hands-on-dev-env -n hands-on kubernetes/helm/environments/dev-env --wait 
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+#####################################################################
+#
+#####################################################################
+-- When deploying to an environment for staging or production, there are a number of changes required compared
+   to when deploying for development or tests: 
+- Resource managers should run outside of the Kubernetes cluster: It is technically feasible to run databases 
+  and queue managers for production use on Kubernetes as stateful containers, using StatefulSets and 
+  PersistentVolumes. At the time of writing, I recommend against it, mainly because the support for stateful 
+  containers is relatively new and unproven in Kubernetes. Instead, I recommend using the existing database and 
+  queue manager Services on-premises or as managed Services in the cloud, leaving Kubernetes to do what it is 
+  best at: running stateless containers. For the scope of this book, to simulate a production environment, 
+  we will run MySQL, MongoDB, and RabbitMQ as plain Docker containers outside of Kubernetes, using the
+  already existing Docker Compose files.
+- Lockdown:
+  - For security reasons, things like actuator endpoints and log levels need to be constrained in a 
+    production environment.
+  - Externally exposed endpoints should also be reviewed from a security perspective. For example, access to 
+    the configuration server should probably be locked down in a production environment, but we will keep 
+    it exposed in this book for convenience. 
+  - Docker image tags must be specified to be able to track which versions of the microservices have been deployed.
+- Scale up available resources: To meet the requirements of both high availability and higher load, we need 
+  to run at least two Pods per Deployment. We might also need to increase the amount of memory and CPU that 
+  are allowed to be used per Pod. To avoid running out of memory in the Minikube instance, we will keep one 
+  Pod per Deployment but increase the maximum memory allowed in the production environment.
+- Set up a production-ready Kubernetes cluster: This is outside the scope of this book, but, if
+  feasible, I recommend using one of the managed Kubernetes Services provided by the leading
+  cloud providers. For the scope of this book, we will deploy to our local Minikube instance.
+
+# Deploying to Kubernetes
+# To simulate the use of production-grade resource managers, MySQL, MongoDB, and RabbitMQ 
+  will run outside of Kubernetes using Docker Compose.
+$ eval $(minikube docker-env)
+$ docker-compose up -d mongodb mysql rabbitmq
+# We also need to tag the existing Docker images with v1
+$ docker tag hands-on/auth-server hands-on/auth-server:v1
+$ docker tag hands-on/config-server hands-on/config-server:v1
+$ docker tag hands-on/gateway hands-on/gateway:v1
+$ docker tag hands-on/product-composite-service hands-on/product-composite-service:v1
+$ docker tag hands-on/product-service hands-on/product-service:v1
+$ docker tag hands-on/recommendation-service hands-on/recommendation-service:v1
+$ docker tag hands-on/review-service hands-on/review-service:v1
+
+++ From here, the commands are very similar to how we deployed to the development environment:
+$ helm install hands-on-prod-env \ kubernetes/helm/environments/prod-env -n hands-on --create-namespace
+$ kubectl wait --timeout=600s --for=condition=ready pod --all
+$ kubectl get pods -o json | jq .items[].spec.containers[].image
+# Run the test script, test-em-all.bash, to verify the simulated production environment:
+$ CONFIG_SERVER_USR=prod-usr \
+$ CONFIG_SERVER_PWD=prod-pwd \
+$ PORT=30443 USE_K8S=true ./test-em-all.bash
+
+# Cleaning up
+$ kubectl delete namespace hands-on
+# Shut down the resource managers that run outside of Kubernetes:
+$ eval $(minikube docker-env)
+$ docker-compose down
+# directs the local Docker client to communicate with the local Docker engine and no 
+  longer communicate with the Docker engine in Minikube.
+$ eval $(minikube docker-env -u)
+
+
+
+
+
+

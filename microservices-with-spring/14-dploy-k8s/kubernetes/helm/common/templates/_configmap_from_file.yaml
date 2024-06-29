@@ -1,0 +1,33 @@
+{{- define "common.configmap_from_file" -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "common.name" . }}
+    helm.sh/chart: {{ include "common.chart" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+data:
+{{ (.Files.Glob "config-repo/*").AsConfig | indent 2 }}
+{{- end -}}
+
+# The first line, {{- define "common.configmap_from_file " -}}, is used to declare the name
+# of the reusable template. The scope of the template ends with a matching {{- end -}}, the
+# last line in this example.
+#
+# To set the name of the ConfigMap, the template common.fullname from the file _helpers.tpl is used.
+# 
+# Next, a number of labels are defined to make it easier to identify the ConfigMap later on. Again,
+# templates from the _helpers.tpl file are used to set the name and specify the chart used. To
+# mark that this Service has been created using Helm, the label app.kubernetes.io/managed-by
+# is set to the value for the field .Release.Service. From the earlier description of the Release
+# object, we know that it always returns the value Helm.
+# 
+# Next comes the core part of the ConfigMap, its data section. To specify the actual configuration 
+# in the ConfigMap, the Glob function in the Files object is used to get all files in the folder
+# config-repo. Next, the function AsConfig is applied to the content in the files to form a proper
+# YAML map. The result is piped to the indent function, which ensures a proper indentation is
+# rendered, in this case, using two characters.
+#
+# The hyphens in {{- and -}} are used to remove preceding and trailing whitespace 
+# remaining after the processing of the directive inside the curly braces.

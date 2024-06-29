@@ -1,0 +1,40 @@
+{{- define "common.service" -}}
+# When the _service.yaml template is used by a microservice to render its Service manifest,
+# the values from the microservice values.yaml file will be available in the .Values object, and
+# the common chart’s values will be available under the field .Values.common.
+{{- $common := dict "Values" .Values.common -}} 
+# So, the variable $common will refer to a dictionary, created by the dict function, with one key,
+# Values, and its value will be the default values from the common chart. These values are taken
+# from the common key in the .Values object.
+{{- $noCommon := omit .Values "common" -}}
+# The $noCommon variable will hold all values from the microservice except values under the
+# common key, specified using the omit function. 
+{{- $overrides := dict "Values" $noCommon -}}
+# The $overrides variable will refer to a dictionary, also with one key, Values, but its value will
+# be the values from the microservice’s values, except the common values. It gets the values from
+# the $noCommon variable declared on the previous line. 
+{{- $noValues := omit . "Values" -}} 
+# The $noValues variable will hold all other built-in objects, except for the Values object.
+{{- with merge $noValues $overrides $common -}}
+# Now, here is where the override will happen; the merge function will create one dictionary
+# based on the dictionaries referred to by the variables $noValues, $overrides, and $common. In
+# this case, values found in the $overrides dictionary will take precedence over values in the
+# $common dictionary, thereby overriding its values.
+# Finally, the with function will change the scope for the template code that follows until its {{-
+# end -}} definition is reached. So, the current scope, ., will now refer to the merged dictionary.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "common.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "common.name" . }}
+    helm.sh/chart: {{ include "common.chart" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+{{ toYaml .Values.service.ports | indent 4 }}
+  selector:
+    app.kubernetes.io/name: {{ include "common.name" . }}
+{{- end -}}
+{{- end -}}

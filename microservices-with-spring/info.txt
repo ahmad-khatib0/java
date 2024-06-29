@@ -256,3 +256,35 @@ Introducing the retry mechanism
    in any place of the implementation since all code runs in one and the same thread.
 
 
+# Helm templates and values
+- The most frequently used parts of the built-in objects are:
+• Values: Used to refer to values in the chart’s values.yaml file or values supplied when running
+  a Helm command like install.
+• Release: Used to provide metadata regarding the current release that is installed. It contains
+  fields like:
+• Name: The name of the release
+• Namespace: The name of the namespace where the installation is performed
+• Service: The name of the installation Service, always returning Helm
+
+• Chart: Used to access information from the Chart.yaml file. Examples of fields that can be
+  useful for providing metadata for a Deployment are:
+  • Name: The name of the chart
+  • Version: The chart’s version number
+• Files: Containing functions for accessing chart-specific files. In this chapter we will use the
+  following two functions in the Files object:
+  • Glob: Returns files in a chart based on a glob pattern. For example, the pattern "config-repo/*" will 
+    return all files found in the folder config-repo
+  • AsConfig: Returns the content of files as a YAML map appropriate for declaring values in a ConfigMap
+• Capabilities: Can be used to find information regarding the capabilities of the Kubernetes
+  cluster that the installation is performed on. For example, a template can use information
+  in this object to adopt a manifest based on what API versions the actual Kubernetes cluster
+  supports. We will not use this object in this chapter, but I think it is in our interest to be aware
+  of it for more advanced use cases.
+
+-- Named templates, which will only be used by other templates and not used to create manifests themselves, 
+   must have a name that starts with an underscore, _. This is used to prevent Helm from trying to create 
+   manifests using them alone.
+
+
+
+
