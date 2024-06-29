@@ -1,0 +1,94 @@
+
+## Testing with Kubernetes ConfigMaps, Secrets, Ingress, and cert-manager
+# Install cert-manager in the cert-manager namespace and wait for the deployment to complete.
+$ helm repo add jetstack https://charts.jetstack.io
+$ helm repo update
+$ helm install cert-manager jetstack/cert-manager --create-namespace \
+    --namespace cert-manager --version v1.11.0 --set installCRDs=true --wait
+++ The cert-manager tool also comes with a set of Kubernetes Custom Resource Definitions (CRDs), like the 
+   Issuer object that was introduced above. CRDs are used in Kubernetes to extend its API, that is, to add 
+   new objects to its API. The --set installCRDs=true flag in the command above ensures that these object
+   definitions are installed when installing cert-manager.
+$ kubectl get pods --namespace cert-manager
+# Map minikube.me to the IP address we can use to reach the Minikube instance
+$ sudo bash -c "echo 127.0.0.1 minikube.me | tee -a /etc/hosts"
+
+# in the root folder
+# ensure that the ./gradlew build command uses the host’s Docker engine and not the Docker
+  engine in the Minikube instance. The build command uses Docker to run test containers.
+$ eval $(minikube docker-env -u)
+$ ./gradlew build
+$ eval $(minikube docker-env)
+$ docker-compose build
+# Resolve the Helm chart dependencies
+$ for f in kubernetes/helm/components/*; do helm dep up $f; done
+$ for f in kubernetes/helm/environments/*; do helm dep up $f; done
+# Set the hands-on namespace as the default namespace for kubectl:
+$ kubectl config set-context $(kubectl config current-context) --namespace=hands-on
+# In a separate terminal window, monitor how certificate objects are created by cert-manager:
+$ kubectl get certificates -w --output-watch-events
+# Deploy the system landscape using Helm and wait for all deployments to complete:
+$ helm install hands-on-dev-env kubernetes/helm/environments/dev-env -n hands-on --create-namespace --wait
+$ Stop the kubectl get certificates command with Ctrl + C
+$ HOST=minikube.me PORT=8443 USE_K8S=true ./test-em-all.bash   # verify
+
+# Rotating certificates
+$ kubectl describe cert tls-certificate
+++ If we want the certificate to be renewed once per minute, we can specify the renewBefore to be 90 
+   days – 1 minute = 90*24 hours – 1 minute = 2160 hours – 1 minute = 2159 hours and 59 minutes.
+# Start the kubectl get events -w command in a separate terminal window and run the following
+  patch command to add the renewBefore field to the certificate:
+$ kubectl patch certificate tls-certificate --type=json 
+  -p='[{"op": "add", "path": "/spec/renewBefore", "value": "2159h59m"}]'
+++ Within 1 minute, the get events command should start to report on certificate renewals. 
+# If you are curious about when the next renewal will happen,
+$ kubectl get cert tls-certificate -o json | jq .status.renewalTime
+# revert the one minute renewal time
+$ kubectl patch certificate tls-certificate --type=json -p='[{"op": "remove", "path": "/spec/renewBefore"}]'
+$ kubectl delete namespace hands-on
+
+
+
+## Deploying to Kubernetes for staging and production
+# Start MySQL, MongoDB, and RabbitMQ outside of Kubernetes:
+$ eval $(minikube docker-env)
+$ docker-compose up -d mongodb mysql rabbitmq
+
+$ docker tag hands-on/auth-server hands-on/auth-server:v1
+$ docker tag hands-on/product-composite-service hands-on/product-composite-service:v1
+$ docker tag hands-on/product-service hands-on/product-service:v1
+$ docker tag hands-on/recommendation-service hands-on/recommendation-service:v1
+$ docker tag hands-on/review-service hands-on/review-service:v1
+# Deploy the microservices using the prod-env Helm chart:
+$ helm install hands-on-prod-env kubernetes/helm/environments/prod-env -n hands-on --create-namespace --wait
+$ HOST=minikube.me PORT=8443 USE_K8S=true ./test-em-all.bash
+
+# cleanup 
+$ kubectl delete namespace hands-on
+$ eval $(minikube docker-env)
+$ docker-compose down
+
+
+
+
+## Verifying that the microservices work without Kubernetes
+# To direct the Docker client to use Docker Desktop instead of Minikube
+$ eval $(minikube docker-env --unset)
+# To avoid port conflicts on port 8443, you need to stop the Minikube instance:
+$ minikube stop
+$ docker-compose build
+$ COMPOSE_FILE=docker-compose.yml ./test-em-all.bash start stop
+
+# Optionally, run the tests using RabbitMQ with multiple partitions per topic:
+$ COMPOSE_FILE=docker-compose-partitions.yml ./test-em-all.bash start stop
+# Alternatively, run the test using Kafka with multiple partitions per topic:
+$ COMPOSE_FILE=docker-compose-kafka.yml ./test-em-all.bash start stop
+++ Since it can take a few seconds for the Kafka broker to decide which partition to assign to the instances 
+   in the consumer groups, the tests can fail since the rebal- ancing operation is still in progress when 
+   the tests are started. If the test fails, then rerun the command, but without the start flag:
+# COMPOSE_FILE=docker-compose-kafka.yml ./test-em-all.bash stop
+
+# Start the Minikube instance, and set the default namespace to hands-on:
+$ minikube start
+$ kubectl config set-context $(kubectl config current-context) --namespace=hands-on
+
