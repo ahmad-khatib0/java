@@ -286,5 +286,77 @@ Introducing the retry mechanism
    manifests using them alone.
 
 
+Introducing service meshes using Istio
+- One of the core components in a service mesh is a lightweight proxy component, which is injected into each 
+  microservice that will be part of the service mesh. All traffic in and out of a microservice is configured 
+  to go through its proxy component. The proxy components are configured at runtime by a control plane in 
+  the service mesh, using APIs exposed by the proxy. The control plane also collects telemetry data through 
+  these APIs from the proxies to visualize how the traffic flows in the service mesh. 
+  A service mesh also contains a data plane, consisting of the proxy components together with separate components 
+  for handling external traffic to and from the service mesh, known as an ingress gateway and an egress gateway, 
+  respectively. The gateway components also communicate with the control plane using a proxy component. 
 
+
+- When deploying Istio on Kubernetes, most of its runtime components are deployed in a separate
+  Kubernetes namespace, istio-system. For the configuration we will use in this book, we will find
+  the following Deployments in this Namespace:
++ istiod, Istio’s daemon that runs the whole control plane.
++ istio-ingressgateway and istio-egressgateway, Istio’s ingress and egress gateway 
+  components, are part of the data plane.
++ A number of integrations with other popular open source projects are supported by Istio to bring in 
+  extra functionality to the control plane. In this book, we will integrate the following components:
+  - Kiali: Provides observability to the service mesh, visualizing what is going on in the
+    mesh. For more information, see https://www.kiali.io.
+  - Tracing: Handles and visualizes distributed tracing information, based on either Jaeger
+    or Zipkin. We will use Jaeger. For more information, see https://www.jaegertracing.io.
+  - Prometheus: Performs data ingestion and storage for time-series-based data, for example, 
+    performance metrics. For more information, see https://prometheus.io. 
+  - Grafana: Visualizes performance metrics and other time-series-related data collected
+    by Prometheus. For more information, see https://grafana.com.
+
+
+Book, we will use the following Istio objects: 
+- Gateway is used to configure how to handle incoming traffic to, and outgoing traffic from, the service mesh. 
+  A gateway depends on a virtual service routing the incoming traffic to Kubernetes Services. We will use a 
+  gateway object to accept incoming traffic to DNS names ending with minikube.me, using HTTPS. The Istio 
+  gateway objects will replace the Ingress objects used in the previous chapter. Refer to the Replacing 
+  Kubernetes Ingress Controller with Istio ingress gateway section for details.
+- VirtualService is used to define routing rules in the service mesh. We will use virtual Services to describe 
+  how to route incoming traffic from an Istio gateway to the Kubernetes Services and between Services. We 
+  will also use virtual Services to inject faults and delays to test the reliability and resilience 
+  capabilities of the service mesh.
+- DestinationRule is used to define policies and rules for traffic that is routed (using a virtual service) 
+  to a specific service (that is, a destination). We will use destination rules to set up encryption policies 
+  to encrypt internal HTTP traffic and define service subsets that describe available versions of the services. 
+  We will use service subsets when performing zero-downtime (blue-green) deployments from an existing 
+  version of a microservice to a new version.
+- PeerAuthentication is used to control service-to-service authentication inside the service
+  mesh. Istio can protect communication between services in a service mesh by automatically
+  provisioning mutual TLS (mTLS) for transport authentication, where client services are au-
+  thenticated by using a client certificate that is provided by Istio. To allow Kubernetes to call
+  liveness and readiness probes using plain HTTP, we will configure Istio to allow a mix of mTLS
+  and plain HTTP, called PERMISSIVE mode.
+- RequestAuthentication is used to authenticate end users based on the credentials provided in a request. 
+  Istio supports using JSON Web Tokens (JWTs) in general and specifically when used according to the OpenID 
+  Connect (OIDC) specification. Istio supports the use of the standard discovery endpoint in OIDC to specify 
+  where Istio can fetch the public key set JSON Web Key Set (JWKS) to validate the signatures of the JWTs. We 
+  will configure Istio to authenticate external requests using the auth server by specifying its JWKS 
+  discovery endpoint. For a recap, see Chapter 11, Securing Access to APIs.
+- AuthorizationPolicy is used to provide access control in Istio. We will not use Istio’s access control in 
+  this book. Instead, we will reuse the existing access control implemented in the product-composite 
+  microservice. We will therefore configure an AuthorizationPolicy object that allows access to the 
+  product-composite microservice for any authenticated user, that is, for requests that contain a valid 
+  JWT in the form of an OIDC access token.
+
+-- An Istio ingress gateway has a number of advantages over a Kubernetes Ingress controller:
+- It can report telemetry data to the control plane for the traffic that flows through it
+- It can be used for more fine-grained routing
+- It can both authenticate and authorize requests before routing them into the service mesh
+
+Virtual services and destination rules
+  To split the traffic between two versions of a microservice, we need to specify the weight distribution
+  between the two versions in a virtual service, on the sender side. The virtual service will spread the
+  traffic between two subsets, called old and new . The exact meaning of the new and old subset is defined
+  in a corresponding DestinationRule, on the receiver side. It uses labels to determine which Pods
+  run the old and new versions of the microservice.
 

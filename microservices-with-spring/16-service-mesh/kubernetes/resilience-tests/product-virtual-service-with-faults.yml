@@ -1,0 +1,19 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: product
+spec:
+  hosts:
+    - product
+  http:
+  - route:
+    - destination:
+        host: product
+    fault:
+      abort:
+        httpStatus: 500
+        percentage:
+          value: 20
+
+# The definition says that 20% of the requests sent to the product 
+# service will be aborted with the HTTP status code 500 

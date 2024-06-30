@@ -1,0 +1,28 @@
+{{- define "common.service" -}}
+{{- $common := dict "Values" .Values.common -}} 
+{{- $noCommon := omit .Values "common" -}} 
+{{- $overrides := dict "Values" $noCommon -}} 
+{{- $noValues := omit . "Values" -}} 
+{{- with merge $noValues $overrides $common -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "common.name" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "common.name" . }}
+    helm.sh/chart: {{ include "common.chart" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+{{ toYaml .Values.service.ports | indent 4 }}
+# An undesired side effect of this (version: {{ .Values.image.tag }} in _deployment.yaml template) is that
+# the corresponding Service objects will also get a name that # includes the version info. As explained 
+# above, we need to have one service that can route requests to the different versions of the Pods. To 
+# avoid this naming problem, the Service template, _service.yaml, # in the common Helm chart is updated 
+# to use the common.name template instead of the common.fullname
+# template used previously in Chapter 17.
+  selector:
+    app.kubernetes.io/name: {{ include "common.name" . }}
+{{- end -}}
+{{- end -}}

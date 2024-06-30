@@ -1,0 +1,21 @@
+fullnameOverride: mongodb
+
+# At the time of writing, Istio is not fully capable of acting as a proxy for MySQL, 
+# MongoDB, and RabbitMQ, so they will be excluded from the service mesh by adding the 
+# following annotation to their Helm charts’ values.yaml file:
+annotations:
+  sidecar.istio.io/inject: "false"
+
+image:
+  repository: registry.hub.docker.com/library
+  name: mongo
+  tag: 6.0.4
+  pullPolicy: IfNotPresent
+
+ports:
+  - containerPort: 27017
+
+service:
+  ports:
+    - name: mongo
+      port: 27017

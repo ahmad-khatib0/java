@@ -1,0 +1,157 @@
+{{- define "common.istio_base" -}}
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: product-composite-require-jwt
+spec:
+  action: ALLOW
+  rules:
+  - {}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: product-composite
+---
+# To enable the use of mutual authentication managed by Istio, Istio needs to be configured both on the
+# server side, using a policy called PeerAuthentication, and on the client side, using a DestinationRule.
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+spec:
+  mtls:
+    mode: PERMISSIVE
+# The PeerAuthentication policy is configured to allow both mTLS and plain HTTP requests using 
+# the PERMISSIVE mode. This enables Kubernetes to call liveness and readiness probes using plain HTTP.
+---
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: product-composite-request-authentication
+spec:
+  jwtRules:
+  - forwardOriginalToken: true
+    issuer: http://auth-server
+    jwksUri: http://auth-server.hands-on.svc.cluster.local/oauth2/jwks
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: product-composite
+
+# - The RequestAuthentication named product-composite-request-authentication requires
+# a valid JWT-encoded access token for requests sent to the product-composite service.
+# - It selects services that it performs request authentication for based on a label selector, app.
+#   kubernetes.io/name: product-composite.
+# - It allows tokens from the issuer, http://auth-server.
+# - It will use the http://auth-server.hands-on.svc.cluster.local/oauth2/jwks URL to fetch
+#   a JWKS. The key set is used to validate the digital signature of the access tokens.
+# - It will forward the access token to the underlying services, in our case, 
+#   the product-composite # microservice.
+# - The AuthorizationPolicy named product-composite-require-jwt is configured to allow all
+#   requests to the product-composite service; it will not apply any authorization rules.
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: hands-on-gw
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - minikube.me
+    port:
+      name: https
+      number: 443
+      protocol: HTTPS
+    tls:
+      credentialName: hands-on-certificate
+      mode: SIMPLE
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hands-on-vs
+spec:
+# The gateways and hosts fields specify that the virtual service will route
+# requests that are sent to the minikube.me hostname through the hands-on-gw gateway.
+  gateways:
+  - hands-on-gw
+  hosts:
+  - minikube.me
+  http:
+  - match:
+    - uri:
+        prefix: /oauth2
+    route:
+    - destination:
+        host: auth-server
+  - match:
+    - uri:
+        prefix: /login
+    route:
+    - destination:
+        host: auth-server
+  - match:
+    - uri:
+        prefix: /error
+    route:
+    - destination:
+        host: auth-server
+  - match:
+    - uri:
+        prefix: /product-composite
+    route:
+    - destination:
+        host: product-composite
+        port:
+          number: 80
+  - match:
+    - uri:
+        prefix: /openapi
+    route:
+    - destination:
+        host: product-composite
+        port:
+          number: 80
+  - match:
+    - uri:
+        prefix: /webjars
+    route:
+    - destination:
+        host: product-composite
+        port:
+          number: 80
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: health-gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - "health.minikube.me"
+    port:
+      number: 443
+      name: https-health
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: hands-on-certificate
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: health-vs
+spec:
+  hosts:
+  - "health.minikube.me"
+  gateways:
+  - health-gateway
+  http:
+  - route:
+    - destination:
+        host: product-composite
+        port:
+          number: 4004
+{{- end -}}
