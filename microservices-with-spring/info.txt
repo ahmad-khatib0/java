@@ -360,3 +360,38 @@ Virtual services and destination rules
   in a corresponding DestinationRule, on the receiver side. It uses labels to determine which Pods
   run the old and new versions of the microservice.
 
+
+
+## A log record is processed as an event in Fluentd and consists of the following information:
+- A time field describing when the log record was created
+- A tag field that identifies what type of log record it is – the tag is used by Fluentd’s routing
+  engine to determine how a log record will be processed
+- A record that contains the actual log information, which is stored as a JSON object
+
+
+## A Fluentd configuration file is used to tell Fluentd how to collect, process, and finally send log records to
+   various targets, such as Elasticsearch. A configuration file consists of the following types of core elements:
+- <source>: Source elements describe where Fluentd will collect log records, for example, tailing
+  log files that have been written to by Docker containers.
+  Source elements typically tag the log records, describing the type of log record. They could,
+  for example, be used to tag log records to state that they come from containers running in Kubernetes.
+- <filter> : Filter elements are used to process the log records. For example, a filter element
+  can parse log records that come from Spring Boot-based microservices and extract interesting
+  parts of the log message into separate fields in the log record. Extracting information into
+  separate fields in the log record makes the information searchable by Elasticsearch. A filter
+  element selects the log records to process based on their tags.
+- <match>: Match elements decide where to send log records, acting as output elements. They
+  are used to perform two main tasks:
+  - Sending processed log records to targets such as Elasticsearch.
+  - Routing to decide how to process log records. A routing rule can rewrite the tag and re-emit the log record 
+    into the Fluentd routing engine for further processing. A routing rule is expressed as an embedded <rule> 
+    element inside the <match> element. Output elements decide what log records to process, in the same way 
+    as a filter: based on the tag of the log records.
+
+╒═══════════════════════════════════════════════════════════════════════════════════════╕
+  An index in Elasticsearch corresponds to a database in SQL concepts. The SQL concepts 
+  table, row, and column correspond to type, document, and property in Elasticsearch.   
+└───────────────────────────────────────────────────────────────────────────────────────┘
+
+
+
