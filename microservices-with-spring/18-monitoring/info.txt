@@ -1,0 +1,45 @@
+
+## Building and deploying the microservices
+$ eval $(minikube docker-env -u)
+$ ./gradlew build
+$ eval $(minikube docker-env)
+$ docker-compose build
+
+$ kubectl delete namespace hands-on
+$ kubectl apply -f kubernetes/hands-on-namespace.yml
+$ kubectl config set-context $(kubectl config current-context) --namespace=hands-on
+$ for f in kubernetes/helm/components/*; do helm dep up $f; done
+$ for f in kubernetes/helm/environments/*; do helm dep up $f; done
+$ helm install hands-on-dev-env kubernetes/helm/environments/dev-env -n hands-on --wait
+$ minikube tunnel
+$ ./test-em-all.bash
+
+# Installing a local mail server for tests
+$ kubectl -n istio-system create deployment mail-server --image maildev/maildev:2.0.5
+$ kubectl -n istio-system expose deployment mail-server --port=1080,1025 --type=ClusterIP
+$ kubectl -n istio-system wait --timeout=60s --for=condition=ready pod -l app=mail-server
+
+# To make the mail server’s web UI available from the outside of Minikube,
+$ helm upgrade istio-hands-on-addons kubernetes/helm/environments/istio-system -n istio-system
+$ https://mail.minikube.me
+
+
+## Configuring Grafana
+# To enable the old alert system (before Grafana v8) and configure Grafana to send emails to the test mail server
+$ kubectl -n istio-system set env deployment/grafana GF_ALERTING_ENABLED=true \
+  GF_UNIFIED_ALERTING_ENABLED=false GF_SMTP_ENABLED=true GF_SMTP_SKIP_VERIFY=true \
+  GF_SMTP_HOST=mail-server:1025 GF_SMTP_FROM_ADDRESS=grafana@minikube.me
+$ kubectl -n istio-system wait --timeout=60s --for=condition=ready pod -l app=Grafana
+++ The variables GF_ALERTING_ENABLED and GF_UNIFIED_ALERTING_ENABLED are used to enable the use of the older 
+   alerting system, The GF_SMTP_ENABLED variable is used to allow Grafana to send emails. The GF_SMTP_SKIP_VERIFY 
+   variable is used to tell Grafana to skip SSL checks with the test mail server. The GF_SMTP_HOST variable points 
+   to our mail server and, finally, the GF_SMTP_FROM_ADDRESS variable specifies what “from” address to use in the mail.
+
+$ ACCESS_TOKEN=$(curl https://writer:secret-writer@minikube.me/oauth2/token 
+  -d grant_type=client_credentials -d scope="product:read product:write" -ks | jq .access_token -r)
+$ echo ACCESS_TOKEN=$ACCESS_TOKEN
+$ siege https://minikube.me/product-composite/1 -H "Authorization: Bearer $ACCESS_TOKEN" -c1 -d1 -v
+$ https://kiali.minikube.me
+$ but more detailed performance metrics are available in Grafana: https://grafana.minikube.me
+
+
