@@ -1,0 +1,141 @@
+
+## Testing and compiling Native Images
+# On Linux, GraalVM’s Native Image compiler requires GCC to be installed.
+$ sudo apt install -y build-essential libz-dev zlib1g-dev
+
+Now GraalVM can be installed. Version 22.3.1 for Java 17 is used, (installed using sdkman)
+$ sdk install java 22.3.1.r17-grl
+$ sdk default java 22.3.1.r17-grl
+# Finally, the Native Image compiler can be installed with the following command
+$ gu install Native Image
+# verify
+$ java -version
+$ gu list
+
+# Running the tracing agent
+$ ./gradlew :microservices:product-service:test --no-daemon
+++ This is a normal gradle test command, but to avoid running out of memory, we disable the use 
+   of the Gradle daemon. By default, the daemon is limited to using 512 MB for its heap, which 
+   is insufficient for the tracing agent in most cases.
+
+++ After the tests are complete, you should find the following files in the microservices/product-
+   service/src/main/resources/META-INF/Native Image folder:
+- jni-config.json
+- predefined-classes-config.json
+- proxy-config.json
+- reflect-config.json
+- resource-config.json
+- serialization-config.json
+
+# Running native tests
+$ ./gradlew nativeTest               # or To test a specific microservice: 
+$ ./gradlew :microservices:product-service:nativeTest
+
+# Creating a Native Image for the current OS
+$ ./gradlew microservices:product-composite-service:nativeCompile
+# The executable file (created using the prev command) can be inspected using the file command:
+$ file microservices/product-composite-service/build/native/nativeCompile/product-composite-service
+++ To try it out, we need to start up the resources it needs manually. In this case, it is only Rabbit-
+   MQ that is required to make it start up successfully. Start it up with the following command:
+$ docker-compose up -d rabbitmq
+++ The Native Image can now be started in the terminal by specifying the same environment
+   variables that are supplied in the docker-compose files:
+$ SPRING_RABBITMQ_USERNAME=rabbit-user-prod \
+$ SPRING_RABBITMQ_PASSWORD=rabbit-pwd-prod \
+$ SPRING_CONFIG_LOCATION=file:config-repo/application.yml,file:config-repo/product-composite.yml \
+$ microservices/product-composite-service/build/native/nativeCompile/product-composite-service
+
+$ curl localhost:4004/actuator/health/liveness
+$ docker-compose down
+
+
+## Creating a Native Image as a Docker image
+$ minikube stop
+$ eval $(minikube docker-env -u)
+$ ./gradlew :microservices:product-service:bootBuildImage --no-daemon
+$ ./gradlew :microservices:product-composite-service:bootBuildImage --no-daemon
+$ ./gradlew :microservices:recommendation-service:bootBuildImage --no-daemon
+$ ./gradlew :microservices:review-service:bootBuildImage --no-daemon
+$ docker images | grep "hands-on/native"
+
+
+## Testing with Docker Compose
+$ minikube stop
+$ eval $(minikube docker-env -u)
+$ ./gradlew build
+$ docker-compose build
+$ unset COMPOSE_FILE
+$ docker-compose up -d mysql mongodb rabbitmq auth-server gateway
+# Wait for the containers to start up until the CPU load goes down, then:
+$ docker-compose up -d 
+# find out how long time it took to start the microservices
+$ docker-compose logs product-composite product review recommendation | grep ": Started"
+# Run through the tests to verify that the system landscape works as expected:
+$ USE_K8S=false HOST=localhost PORT=8443 HEALTH_URL=https://localhost:8443 ./test-em-all.bash
+# Finally, to find out how much memory is used after starting up and running the tests: 
+$ docker stats --no-stream
+$ docker compose down
+
+## Testing Java VM-based microservices with AOT mode enabled
+$ docker-compose up -d mysql mongodb rabbitmq auth-server gateway
+++ Enable AOT mode by editing each microservice’s Dockerfile and set “-Dspring.aot.
+   enabled=true" in the ENVIRONMENT command so it looks like this:
+$ ENTRYPOINT ["java", "-Dspring.aot.enabled=true", "org.springframework.boot.loader.JarLauncher"]
+$ docker-compose build
+$ docker-compose up -d
+$ docker-compose logs product-composite product review recommendation | grep "Starting AOT-processed"
+$ docker-compose logs product-composite product review recommendation | grep ": Started"
+++ Expect the same type of output as when running without AOT mode in the section above but
+   with slightly shorter startup times. In my case, the startup times vary from 4.5 to 5.5 seconds.
+   Compared to the normal Java VM startup times, this is 1 to 1.5 seconds faster.
+
+$ USE_K8S=false HOST=localhost PORT=8443 HEALTH_URL=https://localhost:8443 ./test-em-all.bash
+$ Revert the changes in the Dockerfiles and perform a rebuild of the Docker images to disable AOT mode.
+$ docker compose down
+
+
+## Testing natively compiled microservices
+$ export COMPOSE_FILE=docker-compose-native.yml
+$ docker-compose up -d mysql mongodb rabbitmq auth-server gateway
+$ docker-compose up -d
+# To find out how long time it took to start the natively compiled microservices: 
+$ docker-compose logs product-composite product review recommendation | grep ": Started"
+++ In the above output, we can see startup times varying from 0.2-0.5 seconds. Considering that all
+   microservices instances were started up at the same time, these are rather impressive figures
+   compared to the 5.5 to 7 seconds it took for the Java VM-based tests!
+# Run through the tests to verify that the system landscape works as expected:
+$ USE_K8S=false HOST=localhost PORT=8443 HEALTH_URL=https://localhost:8443 ./test-em-all.bash
+$ docker stats --no-stream
+$ docker compose down
+
+
+## Testing with Kubernetes
+$ eval $(minikube docker-env -u)
+$ docker save hands-on/native-product-composite-service:latest -o native-product-composite.tar
+$ docker save hands-on/native-product-service:latest -o native-product.tar
+$ docker save hands-on/native-recommendation-service:latest -o native-recommendation.tar
+$ docker save hands-on/native-review-service:latest -o native-review.tar
+$ minikube start
+$ minikube tunnel
+$ eval $(minikube docker-env)
+$ docker load -i native-product-composite.tar
+$ docker load -i native-product.tar
+$ docker load -i native-recommendation.tar
+$ docker load -i native-review.tar
+$ rm native-product-composite.tar native-product.tar native-recommendation.tar native-review.tar
+$ docker-compose build auth-server
+$ kubectl delete namespace hands-on
+$ kubectl apply -f kubernetes/hands-on-namespace.yml
+$ kubectl config set-context $(kubectl config current-context) --namespace=hands-on
+$ for f in kubernetes/helm/components/*; do helm dep up $f; done
+$ for f in kubernetes/helm/environments/*; do helm dep up $f; done
+$ helm upgrade -install hands-on-dev-env-native kubernetes/helm/environments/dev-env-native -n hands-on --wait
+$ ./test-em-all.bash
+
+# Check the startup time for one of the Pods. To measure the actual startup time for a specific microservice: 
+$ Kubectl delete pod -l app=product-composite
+$ kubectl logs -l app=product-composite --tail=-1 | grep ": Started"
+$ kubectl get pods -o jsonpath="{.items[*].spec.containers[*].image}" | xargs -n1 | grep hands-on
+
+
+

@@ -395,3 +395,46 @@ Virtual services and destination rules
 
 
 
+When to native-compile Java source code
+  Java has always been known for its build-once-run-anywhere capability, providing excellent cross-platform 
+  support. The Java source code is compiled once into bytecode. At runtime, a Java VM transforms the bytecode 
+  into executable code for the target platform using a Just in Time compiler, also known as JIT compilation. 
+  This takes some time, slowing down the startup of Java programs. Before the era of microservices, Java 
+  components typically ran on an application server, like a Java EE server. After being deployed, the Java 
+  component ran for a long time, making the longer startup time less of a problem.
+  With the introduction of microservices, this perspective changed. With microservices, there comes
+  the expectation of being able to upgrade them more frequently and quickly scale instances for a microservice 
+  up and down based on its usage. Another expectation is to be able to scale to zero, meaning that when a
+  microservice is not used, it should not run any instances at all. An unused microservice should not allocate 
+  any hardware resources and, even more importantly, should not create any runtime cost, for example, in a 
+  cloud deployment. To be able to meet these expectations, it is important that a microservice instance 
+  can be started swiftly.
+  Together, these lead to a situation where faster startup becomes a more critical requirement than
+  cross-platform support. This requirement can be achieved by compiling the Java source code into the
+  target platform’s binary format at build time, in the same way as C or Go programs are compiled. This
+  is known as Ahead of Time compilation or AOT compilation. The GraalVM Native Image compiler
+  will be used to perform the AOT compilation
+
+- GraalVM’s VM is polyglot, supporting not only traditional Java VM languages such as Java, Kotlin, and
+  Scala but also languages such as JavaScript, C, C++, Ruby, Python, and even programs compiled into
+  a WebAssembly. The part of GraalVM that we will focus on is its Native Image compiler, which can be used 
+  to compile Java bytecode into a Native Image containing binary executable code for a specific operating 
+  system (OS) and HW platform, for example, macOS on Apple silicon (arm64) or Linux on Intel (amd64).
+- The Native Image can run without a Java VM, including binary compiled application classes and
+  other classes required from the application’s dependencies. It also includes a runtime system called
+  Substrate VM, which handles garbage collection, thread scheduling, and more.
+
+- Building a Native Image can be done in two ways:
+• Creating a Native Image for the current OS:
+  The first option uses Gradle’s nativeImage task. It will use the installed GraalVM’s Native Im-
+  age compiler to create an executable file for the current OS and hardware architecture. The
+  nativeImage task is available given that GraalVM’s Gradle-plugin is declared in the build file.
+• Creating a Native Image as a Docker image
+  The second option is to use the existing Gradle task, bootBuildImage, to create a Docker image.
+  Given that GraalVM’s Gradle plugin is declared in the build file, the bootBuildImage task will
+  create a Docker image that contains the Native Image instead of a Java VM with the applica-
+  tion’s JAR file that is used otherwise. The Native Image will be built in a Docker container so
+  that it will be built for Linux. This also means that the GraalVM’s Native Image compiler does
+  not need to be installed when the bootBuildImage task is used. Under the hood, this task uses
+  buildpacks, instead of a Dockerfile, to create the Docker image.
+
